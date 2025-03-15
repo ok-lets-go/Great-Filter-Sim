@@ -1,0 +1,111 @@
+import pygame, math, random
+
+# Initialize Pygame
+pygame.init()
+
+# Constants
+WIDTH, HEIGHT = 1200, 1200
+FPS = 60
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+GREEN = (0, 255, 0)
+BLUE = (0, 0, 255)
+HEX_SIZE = 100
+TILE_SPAWN = (5*WIDTH//6, 5*HEIGHT//6)
+
+# Create the game window
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Great Filter")
+
+# Clock to control frame rate
+clock = pygame.time.Clock()
+
+class HexTile: 
+    def __init__(self, composition):
+        self.x, self.y = TILE_SPAWN
+        composition_list = ['lllll', 'llllww', 'llwwww']
+        self.composition = composition_list[composition]
+        self.rotation = random.randint(0, 2)
+        self.place()
+    def place(self): 
+        self.tile = pygame.draw.polygon(screen, BLACK, [(self.x + HEX_SIZE * math.cos(math.radians(angle)), self.y + HEX_SIZE * math.sin(math.radians(angle))) for angle in range(0, 360, 60)])
+        
+
+
+
+class HexGrid: 
+    def __init__(self):
+        self.grid = [[None for _ in range(5)] for _ in range(4)]
+
+    def draw_hexagon(self, surface, color, position, size):
+        x, y = position
+        points = [(x + size * math.cos(math.radians(angle)), y + size * math.sin(math.radians(angle))) for angle in range(0, 360, 60)]
+        pygame.draw.polygon(surface, color, points, 2)
+
+    def draw_hex_grid(self, rows, cols, hex_size):
+        grid_width = (cols - 1) * (1.5 * hex_size) + hex_size
+        grid_height = (rows - 1) * (hex_size * math.sqrt(3)) + hex_size * math.sqrt(3)
+        offset_x = (WIDTH - grid_width) / 2
+        offset_y = (HEIGHT - grid_height) / 3
+        for row in range(rows):
+            for col in range(cols):
+                x = col * hex_size * 1.5 + offset_x
+                y = row * hex_size * math.sqrt(3) + (hex_size * math.sqrt(3) / 2 * (col % 2)) + offset_y
+                self.draw_hexagon(screen, BLACK, (x, y), hex_size)
+
+
+
+
+# Game loop
+def main():
+    rectangle_draging = False   
+    #initial conditions
+    game_space = HexGrid()
+    tiles = [HexTile(n%3) for n in range(20)]
+    tile = tiles[0]
+
+    running = True
+    while running:
+        clock.tick(FPS)  # Limit the frame rate
+        
+        # Event handling
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:            
+                    if tile.tile.collidepoint(event.pos):
+                        rectangle_draging = True
+                        mouse_x, mouse_y = event.pos
+                        offset_x = tile.x - mouse_x
+                        offset_y = tile.y - mouse_y
+                        print(tile.tile.x)
+
+            elif event.type == pygame.MOUSEBUTTONUP:
+                if event.button == 1:            
+                    rectangle_draging = False
+
+            elif event.type == pygame.MOUSEMOTION:
+                if rectangle_draging:
+                    mouse_x, mouse_y = event.pos
+                    tile.x = mouse_x + offset_x
+                    tile.y = mouse_y + offset_y
+        # Game logic goes here
+        
+        # Drawing
+        screen.fill(WHITE)  # Clear the screen with white
+        game_space.draw_hex_grid(4, 5, HEX_SIZE)
+        tile.place()
+
+        
+        # Update display
+        pygame.display.flip()
+
+
+
+    # Quit Pygame
+    pygame.quit()
+
+if __name__ == "__main__": 
+    main()
