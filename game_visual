@@ -23,13 +23,23 @@ clock = pygame.time.Clock()
 class HexTile: 
     def __init__(self, composition):
         self.x, self.y = TILE_SPAWN
-        composition_list = ['lllll', 'llllww', 'llwwww']
+        composition_list = ['wlwlwl', 'llllww', 'llwwww']
+        self.colors = {'l':GREEN, 'w':BLUE}
         self.composition = composition_list[composition]
         self.rotation = random.randint(0, 2)
         self.place()
+
     def place(self): 
         self.tile = pygame.draw.polygon(screen, BLACK, [(self.x + HEX_SIZE * math.cos(math.radians(angle)), self.y + HEX_SIZE * math.sin(math.radians(angle))) for angle in range(0, 360, 60)])
-        
+        for angle in range(0, 360, 60):
+            index = (angle//60 + 2 * self.rotation) % 6
+            pygame.draw.polygon(screen, self.colors[self.composition[index]], 
+                                [(self.x, self.y), 
+                                 (self.x + HEX_SIZE * math.cos(math.radians(angle)), self.y + HEX_SIZE * math.sin(math.radians(angle))), 
+                                 (self.x + HEX_SIZE * math.cos(math.radians(angle+60)), self.y + HEX_SIZE * math.sin(math.radians(angle+60)))]
+            )
+
+
 
 
 
@@ -80,7 +90,6 @@ def main():
                         mouse_x, mouse_y = event.pos
                         offset_x = tile.x - mouse_x
                         offset_y = tile.y - mouse_y
-                        print(tile.tile.x)
 
             elif event.type == pygame.MOUSEBUTTONUP:
                 if event.button == 1:            
