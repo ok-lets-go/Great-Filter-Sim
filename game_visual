@@ -23,20 +23,30 @@ clock = pygame.time.Clock()
 class HexTile: 
     def __init__(self, composition):
         self.x, self.y = TILE_SPAWN
-        composition_list = ['wlwlwl', 'llllww', 'llwwww']
+        composition_list = ['llllll', 'llllww', 'llwwww', 'llwwww']
         self.colors = {'l':GREEN, 'w':BLUE}
         self.composition = composition_list[composition]
         self.rotation = random.randint(0, 2)
         self.place()
 
+    def set_location(self, x, y): 
+        self.x = x
+        self.y = y
+
     def place(self): 
-        self.tile = pygame.draw.polygon(screen, BLACK, [(self.x + HEX_SIZE * math.cos(math.radians(angle)), self.y + HEX_SIZE * math.sin(math.radians(angle))) for angle in range(0, 360, 60)])
+        self.tile = pygame.draw.polygon(screen, BLACK, [(self.x + HEX_SIZE * math.cos(math.radians(angle)), self.y + HEX_SIZE * math.sin(math.radians(angle))) for angle in range(0, 360, 60)], 10)
         for angle in range(0, 360, 60):
             index = (angle//60 + 2 * self.rotation) % 6
             pygame.draw.polygon(screen, self.colors[self.composition[index]], 
                                 [(self.x, self.y), 
-                                 (self.x + HEX_SIZE * math.cos(math.radians(angle)), self.y + HEX_SIZE * math.sin(math.radians(angle))), 
-                                 (self.x + HEX_SIZE * math.cos(math.radians(angle+60)), self.y + HEX_SIZE * math.sin(math.radians(angle+60)))]
+                                 (self.x + (HEX_SIZE - 4) * math.cos(math.radians(angle)), self.y + (HEX_SIZE - 4) * math.sin(math.radians(angle))), 
+                                 (self.x + (HEX_SIZE - 4) * math.cos(math.radians(angle+60)), self.y + (HEX_SIZE - 4) * math.sin(math.radians(angle+60)))]
+            )
+            pygame.draw.polygon(screen, BLACK, 
+                                [(self.x, self.y), 
+                                 (self.x + (HEX_SIZE) * math.cos(math.radians(angle)), self.y + (HEX_SIZE) * math.sin(math.radians(angle))), 
+                                 (self.x + (HEX_SIZE) * math.cos(math.radians(angle+60)), self.y + (HEX_SIZE) * math.sin(math.radians(angle+60)))
+                                ], width=2
             )
 
 
@@ -52,26 +62,39 @@ class HexGrid:
         points = [(x + size * math.cos(math.radians(angle)), y + size * math.sin(math.radians(angle))) for angle in range(0, 360, 60)]
         pygame.draw.polygon(surface, color, points, 2)
 
-    def draw_hex_grid(self, rows, cols, hex_size):
+    def draw_hex_grid(self, rows, cols, hex_size, tiles):
         grid_width = (cols - 1) * (1.5 * hex_size) + hex_size
         grid_height = (rows - 1) * (hex_size * math.sqrt(3)) + hex_size * math.sqrt(3)
         offset_x = (WIDTH - grid_width) / 2
         offset_y = (HEIGHT - grid_height) / 3
+        index = 0
         for row in range(rows):
             for col in range(cols):
                 x = col * hex_size * 1.5 + offset_x
                 y = row * hex_size * math.sqrt(3) + (hex_size * math.sqrt(3) / 2 * (col % 2)) + offset_y
-                self.draw_hexagon(screen, BLACK, (x, y), hex_size)
+                tiles[index].set_location(x, y)
+                tiles[index].place()
+                index += 1
+
+    
+        
+
+
+def shuffle(input_list: list): 
+    for n in range(1000): 
+        a = random.randint(0, 19)
+        input_list.append(input_list.pop(a))
+    return input_list
 
 
 
 
 # Game loop
 def main():
-    rectangle_draging = False   
+    tile_dragging = False   
     #initial conditions
     game_space = HexGrid()
-    tiles = [HexTile(n%3) for n in range(20)]
+    tiles = shuffle([HexTile(n%4) for n in range(20)])
     tile = tiles[0]
 
     running = True
@@ -86,17 +109,18 @@ def main():
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:            
                     if tile.tile.collidepoint(event.pos):
-                        rectangle_draging = True
+                        tile_dragging = True
                         mouse_x, mouse_y = event.pos
                         offset_x = tile.x - mouse_x
                         offset_y = tile.y - mouse_y
+                        print('click')
 
             elif event.type == pygame.MOUSEBUTTONUP:
                 if event.button == 1:            
-                    rectangle_draging = False
+                    tile_dragging = False
 
             elif event.type == pygame.MOUSEMOTION:
-                if rectangle_draging:
+                if tile_dragging:
                     mouse_x, mouse_y = event.pos
                     tile.x = mouse_x + offset_x
                     tile.y = mouse_y + offset_y
@@ -104,8 +128,8 @@ def main():
         
         # Drawing
         screen.fill(WHITE)  # Clear the screen with white
-        game_space.draw_hex_grid(4, 5, HEX_SIZE)
-        tile.place()
+        game_space.draw_hex_grid(4, 5, HEX_SIZE, tiles)
+        
 
         
         # Update display
