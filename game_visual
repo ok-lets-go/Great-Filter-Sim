@@ -25,6 +25,9 @@ pygame.display.set_caption("Great Filter")
 # Clock to control frame rate
 clock = pygame.time.Clock()
 
+
+#Visual Elements
+
 class HexTile: 
     def __init__(self, composition):
         self.x, self.y = TILE_SPAWN
@@ -39,26 +42,28 @@ class HexTile:
         self.y = y
 
     def place(self): 
+        #draw hexagon
         self.tile = pygame.draw.polygon(screen, BLACK, [(self.x + HEX_SIZE * math.cos(math.radians(angle)), self.y + HEX_SIZE * math.sin(math.radians(angle))) for angle in range(0, 360, 60)], 10)
         for angle in range(0, 360, 60):
             index = (angle//60 + 2 * self.rotation) % 6
+            #draw hex triangle fill
             pygame.draw.polygon(screen, self.colors[self.composition[index]], 
                                 [(self.x, self.y), 
                                  (self.x + (HEX_SIZE - 4) * math.cos(math.radians(angle)), self.y + (HEX_SIZE - 4) * math.sin(math.radians(angle))), 
                                  (self.x + (HEX_SIZE - 4) * math.cos(math.radians(angle+60)), self.y + (HEX_SIZE - 4) * math.sin(math.radians(angle+60)))]
             )
+            #draw hex triangle line
             pygame.draw.polygon(screen, BLACK, 
                                 [(self.x, self.y), 
                                  (self.x + (HEX_SIZE) * math.cos(math.radians(angle)), self.y + (HEX_SIZE) * math.sin(math.radians(angle))), 
                                  (self.x + (HEX_SIZE) * math.cos(math.radians(angle+60)), self.y + (HEX_SIZE) * math.sin(math.radians(angle+60)))
-                                ], width=2
+                                ], width=3
             )
 
 
 class HexGrid: 
     def __init__(self):
         self.grid = [[None for _ in range(5)] for _ in range(4)]
-        self.grid_drawn = False
 
     def draw_hexagon(self, surface, color, position, size):
         x, y = position
@@ -78,10 +83,7 @@ class HexGrid:
                 tiles[index].set_location(x, y)
                 tiles[index].place()
                 self.grid[row][col] = tiles[index]
-                if not self.grid_drawn:
-                    print(self.grid)
                 index += 1
-        self.grid_drawn = True
     
 class InfoBar: 
     def __init__(self):
@@ -94,16 +96,33 @@ class InfoBar:
         for n in range(4): 
             pygame.draw.rect(screen, BLACK, [(WIDTH/10+(n)*WIDTH/5, 4.5*HEIGHT/6), (2*WIDTH/10, HEIGHT/6)], width=1)
 
+
+
+#Technical Elements
+
 class GameManager: 
     def __init__(self):
-        pass
+        self.players = [None, None, None, None]
+        self.assign_players()
+
+    def assign_players(self): 
+        for n in range(4): 
+            self.players[n] = Player(f"Player {n+1}", n)
+
+
+class Player: 
+    def __init__(self, name, position): 
+        self.name = name
+        self.position = position
+
+    
     
         
 
-
+#Miscellaneous Methods
 def shuffle(input_list: list): 
     for n in range(1000): 
-        a = random.randint(0, 19)
+        a = random.randint(0, len(input_list)-1)
         input_list.append(input_list.pop(a))
     return input_list
 
@@ -152,7 +171,6 @@ def main():
         screen.fill(BROWN)  # Clear the screen with white
         game_space.draw_hex_grid(4, 5, HEX_SIZE, tiles)
         info_space.draw_sections()
-        screen.blit(sample_text, (100, 100))
 
         
         # Update display
