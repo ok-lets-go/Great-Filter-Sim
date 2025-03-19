@@ -10,6 +10,7 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
+BROWN = pygame.Color("#C19A6B")
 HEX_SIZE = 100
 TILE_SPAWN = (5*WIDTH//6, 5*HEIGHT//6)
 
@@ -50,12 +51,10 @@ class HexTile:
             )
 
 
-
-
-
 class HexGrid: 
     def __init__(self):
         self.grid = [[None for _ in range(5)] for _ in range(4)]
+        self.grid_drawn = False
 
     def draw_hexagon(self, surface, color, position, size):
         x, y = position
@@ -65,7 +64,7 @@ class HexGrid:
     def draw_hex_grid(self, rows, cols, hex_size, tiles):
         grid_width = (cols - 1) * (1.5 * hex_size) + hex_size
         grid_height = (rows - 1) * (hex_size * math.sqrt(3)) + hex_size * math.sqrt(3)
-        offset_x = (WIDTH - grid_width) / 2
+        offset_x = (WIDTH - grid_width) / 2 + 50
         offset_y = (HEIGHT - grid_height) / 3
         index = 0
         for row in range(rows):
@@ -74,7 +73,20 @@ class HexGrid:
                 y = row * hex_size * math.sqrt(3) + (hex_size * math.sqrt(3) / 2 * (col % 2)) + offset_y
                 tiles[index].set_location(x, y)
                 tiles[index].place()
+                self.grid[row][col] = tiles[index]
+                if not self.grid_drawn:
+                    print(self.grid)
                 index += 1
+        self.grid_drawn = True
+    
+class InfoBar: 
+    def __init__(self):
+        pass
+
+    
+    def draw_sections(self): 
+        pygame.draw.rect(screen, BLACK, [(WIDTH/10, 5*HEIGHT/6), (8*WIDTH/10, .5*HEIGHT/6)], width=2)
+
 
     
         
@@ -94,6 +106,7 @@ def main():
     tile_dragging = False   
     #initial conditions
     game_space = HexGrid()
+    info_space = InfoBar()
     tiles = shuffle([HexTile(n%4) for n in range(20)])
     tile = tiles[0]
 
@@ -127,8 +140,9 @@ def main():
         # Game logic goes here
         
         # Drawing
-        screen.fill(WHITE)  # Clear the screen with white
+        screen.fill(BROWN)  # Clear the screen with white
         game_space.draw_hex_grid(4, 5, HEX_SIZE, tiles)
+        info_space.draw_sections()
         
 
         
