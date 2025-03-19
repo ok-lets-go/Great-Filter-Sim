@@ -15,8 +15,8 @@ HEX_SIZE = 100
 TILE_SPAWN = (5*WIDTH//6, 5*HEIGHT//6)
 
 pygame.font.init()
-game_font = pygame.font.SysFont("Veranda", 30)
-
+info_font = pygame.font.SysFont("verdana", 15)
+hex_font = pygame.font.SysFont("verdana", 10)
 
 # Create the game window
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -29,12 +29,13 @@ clock = pygame.time.Clock()
 #Visual Elements
 
 class HexTile: 
-    def __init__(self, composition):
+    def __init__(self, composition, value):
         self.x, self.y = TILE_SPAWN
         composition_list = ['llllll', 'llllww', 'llwwww', 'llwwww']
         self.colors = {'l':GREEN, 'w':BLUE}
         self.composition = composition_list[composition]
         self.rotation = random.randint(0, 2)
+        self.value = value
         self.place()
 
     def set_location(self, x, y): 
@@ -78,23 +79,31 @@ class HexGrid:
         index = 0
         for row in range(rows):
             for col in range(cols):
+                tile: HexTile = tiles[index]
                 x = col * hex_size * 1.5 + offset_x
                 y = row * hex_size * math.sqrt(3) + (hex_size * math.sqrt(3) / 2 * (col % 2)) + offset_y
-                tiles[index].set_location(x, y)
-                tiles[index].place()
-                self.grid[row][col] = tiles[index]
+                tile.set_location(x, y)
+                tile.place()
+                pygame.draw.circle(screen, BLACK, (x, y), 10)
+                hex_num = hex_font.render(str(tile.value), True, WHITE)
+                screen.blit(hex_num, (x - hex_num.width/2, y- hex_num.height/2))
+                self.grid[row][col] = tile
                 index += 1
-    
-class InfoBar: 
-    def __init__(self):
-        pass
 
     
+class InfoBar: 
+    def __init__(self, players: list):
+        self.players = players
+    
     def draw_sections(self): 
-        pygame.draw.rect(screen, WHITE, [(WIDTH/10, 4.5*HEIGHT/6), (8*WIDTH/10, HEIGHT/6)])
-        pygame.draw.rect(screen, BLACK, [(WIDTH/10, 4.5*HEIGHT/6), (8*WIDTH/10, HEIGHT/6)], width=4)
+        offset = (10, 5)
+        main_box = [(WIDTH/10, 5*HEIGHT/6), (8*WIDTH/10, 0.7*HEIGHT/6)]
+        pygame.draw.rect(screen, WHITE, main_box)
+        pygame.draw.rect(screen, BLACK, main_box, width=4)
         for n in range(4): 
-            pygame.draw.rect(screen, BLACK, [(WIDTH/10+(n)*WIDTH/5, 4.5*HEIGHT/6), (2*WIDTH/10, HEIGHT/6)], width=1)
+            pygame.draw.rect(screen, BLACK, [(main_box[0][0]+(n)*WIDTH/5, main_box[0][1]), (main_box[1][0]/4, main_box[1][1])], width=1)
+            player: Player = self.players[n]
+            screen.blit(player.name, (WIDTH/10+(n)*WIDTH/5 + offset[0], 5*HEIGHT/6 + offset[1]))
 
 
 
@@ -112,7 +121,7 @@ class GameManager:
 
 class Player: 
     def __init__(self, name, position): 
-        self.name = name
+        self.name = info_font.render(name, True, BLACK)
         self.position = position
 
     
@@ -134,9 +143,9 @@ def main():
     tile_dragging = False   
     #initial conditions
     game_space = HexGrid()
-    info_space = InfoBar()
-    tiles = shuffle([HexTile(n%4) for n in range(20)])
-    tile = tiles[0]
+    manager = GameManager()
+    info_space = InfoBar(manager.players)
+    tiles = shuffle([HexTile(n%4, n+1) for n in range(20)])
 
     running = True
     while running:
@@ -146,25 +155,30 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+            
+            #Code for drag and dropping tiles, moot due to auto-assigment, may be revisited in the future. 
 
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:            
-                    if tile.tile.collidepoint(event.pos):
-                        tile_dragging = True
-                        mouse_x, mouse_y = event.pos
-                        offset_x = tile.x - mouse_x
-                        offset_y = tile.y - mouse_y
-                        print('click')
 
-            elif event.type == pygame.MOUSEBUTTONUP:
-                if event.button == 1:            
-                    tile_dragging = False
+            # elif event.type == pygame.MOUSEBUTTONDOWN:
+            #     if event.button == 1:            
+            #         if tile.tile.collidepoint(event.pos):
+            #             tile_dragging = True
+            #             mouse_x, mouse_y = event.pos
+            #             offset_x = tile.x - mouse_x
+            #             offset_y = tile.y - mouse_y
+            #             print('click')
 
-            elif event.type == pygame.MOUSEMOTION:
-                if tile_dragging:
-                    mouse_x, mouse_y = event.pos
-                    tile.x = mouse_x + offset_x
-                    tile.y = mouse_y + offset_y
+            # elif event.type == pygame.MOUSEBUTTONUP:
+            #     if event.button == 1:            
+            #         tile_dragging = False
+
+            # elif event.type == pygame.MOUSEMOTION:
+            #     if tile_dragging:
+            #         mouse_x, mouse_y = event.pos
+            #         tile.x = mouse_x + offset_x
+            #         tile.y = mouse_y + offset_y
+
+
         # Game logic goes here
         
         # Drawing

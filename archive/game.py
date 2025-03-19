@@ -8,7 +8,7 @@ class Die:
         self.die_resources = {
             1: 'water',
             2: 'food',
-            3: 'tree',
+            3: 'wood',
             4: 'brick'
         }
 
@@ -37,7 +37,7 @@ class Player:
         self.resources = {
             'water': 0,
             'food': 0,
-            'tree': 0,
+            'wood': 0,
             'brick': 0
         }
 

@@ -1,4 +1,4 @@
-from archive.game import Player
+from game import Player
 
 round_count_list = []
 
@@ -9,10 +9,10 @@ for n in range(10000):
     while not die_upgradeable:
         round_num += 1
         player.roll_dice()
-        die_upgradeable = player.resources['water']>=0 and player.resources['food']>=2 and player.resources['tree']>=0 and player.resources['brick']>=0
+        die_upgradeable = player.resources['water']>=1 and player.resources['food']>=1 and player.resources['wood']>=1 and player.resources['brick']>=1
     round_count_list.append(round_num)
 
-print(sum(round_count_list)/len(round_count_list))
+print("Average rolls to achieve goal:", sum(round_count_list)/len(round_count_list))
 percent = 0
 for n in range(2, 150): 
     occurence_percentage = round_count_list.count(n)/100
