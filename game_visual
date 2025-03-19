@@ -14,6 +14,10 @@ BROWN = pygame.Color("#C19A6B")
 HEX_SIZE = 100
 TILE_SPAWN = (5*WIDTH//6, 5*HEIGHT//6)
 
+pygame.font.init()
+game_font = pygame.font.SysFont("Veranda", 30)
+
+
 # Create the game window
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Great Filter")
@@ -85,9 +89,14 @@ class InfoBar:
 
     
     def draw_sections(self): 
-        pygame.draw.rect(screen, BLACK, [(WIDTH/10, 5*HEIGHT/6), (8*WIDTH/10, .5*HEIGHT/6)], width=2)
+        pygame.draw.rect(screen, WHITE, [(WIDTH/10, 4.5*HEIGHT/6), (8*WIDTH/10, HEIGHT/6)])
+        pygame.draw.rect(screen, BLACK, [(WIDTH/10, 4.5*HEIGHT/6), (8*WIDTH/10, HEIGHT/6)], width=4)
+        for n in range(4): 
+            pygame.draw.rect(screen, BLACK, [(WIDTH/10+(n)*WIDTH/5, 4.5*HEIGHT/6), (2*WIDTH/10, HEIGHT/6)], width=1)
 
-
+class GameManager: 
+    def __init__(self):
+        pass
     
         
 
@@ -143,7 +152,7 @@ def main():
         screen.fill(BROWN)  # Clear the screen with white
         game_space.draw_hex_grid(4, 5, HEX_SIZE, tiles)
         info_space.draw_sections()
-        
+        screen.blit(sample_text, (100, 100))
 
         
         # Update display
