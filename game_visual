@@ -1,4 +1,5 @@
 import pygame, math, random
+from string import ascii_lowercase as acl
 
 # Initialize Pygame
 pygame.init()
@@ -8,8 +9,8 @@ WIDTH, HEIGHT = 1200, 1200
 FPS = 60
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
-GREEN = (0, 255, 0)
-BLUE = (0, 0, 255)
+GREEN = pygame.Color("#A1FB03")
+BLUE = pygame.Color("#01E3FD")
 BROWN = pygame.Color("#C19A6B")
 HEX_SIZE = 100
 TILE_SPAWN = (5*WIDTH//6, 5*HEIGHT//6)
@@ -26,6 +27,16 @@ pygame.display.set_caption("Great Filter")
 clock = pygame.time.Clock()
 
 
+#Miscellaneous Methods
+def shuffle(input_list: list): 
+    for n in range(1000): 
+        a = random.randint(0, len(input_list)-1)
+        input_list.append(input_list.pop(a))
+    return input_list
+
+def roll_die(self, die_value): 
+    return random.randint(1, die_value)
+
 #Visual Elements
 
 class HexTile: 
@@ -34,8 +45,9 @@ class HexTile:
         composition_list = ['llllll', 'llllww', 'llwwww', 'llwwww']
         self.colors = {'l':GREEN, 'w':BLUE}
         self.composition = composition_list[composition]
-        self.rotation = random.randint(0, 2)
+        self.rotation = random.randint(0, 5)
         self.value = value
+        self.piece_status = [{"index": acl[(n+self.rotation)%6], "occupied":False, "connections": []} for n in range(6)]
         self.place()
 
     def set_location(self, x, y): 
@@ -45,8 +57,9 @@ class HexTile:
     def place(self): 
         #draw hexagon
         self.tile = pygame.draw.polygon(screen, BLACK, [(self.x + HEX_SIZE * math.cos(math.radians(angle)), self.y + HEX_SIZE * math.sin(math.radians(angle))) for angle in range(0, 360, 60)], 10)
-        for angle in range(0, 360, 60):
-            index = (angle//60 + 2 * self.rotation) % 6
+        tile_letters = ['a', 'b', 'c', 'd', 'e', 'f']
+        for angle, letter in zip(range(0, 360, 60), tile_letters):
+            index = (angle//60 + self.rotation) % 6
             #draw hex triangle fill
             pygame.draw.polygon(screen, self.colors[self.composition[index]], 
                                 [(self.x, self.y), 
@@ -60,11 +73,18 @@ class HexTile:
                                  (self.x + (HEX_SIZE) * math.cos(math.radians(angle+60)), self.y + (HEX_SIZE) * math.sin(math.radians(angle+60)))
                                 ], width=3
             )
+        for angle, letter in zip(range(0, 360, 60), tile_letters):
+            tile_letter = hex_font.render(letter, True, BLACK)
+            screen.blit(tile_letter, ((self.x + (HEX_SIZE-25) * math.cos(math.radians(angle+30 - 60*self.rotation))-tile_letter.width/2, self.y + (HEX_SIZE-25) * math.sin(math.radians(angle+30-60*self.rotation))-tile_letter.height/2)))
+
+
 
 
 class HexGrid: 
     def __init__(self):
         self.grid = [[None for _ in range(5)] for _ in range(4)]
+        self.printed = False
+        self.tile_highlight = None
 
     def draw_hexagon(self, surface, color, position, size):
         x, y = position
@@ -89,7 +109,11 @@ class HexGrid:
                 screen.blit(hex_num, (x - hex_num.width/2, y- hex_num.height/2))
                 self.grid[row][col] = tile
                 index += 1
-
+        # hex_status = [land.piece_status for land in self.grid[0]]
+        # if not self.printed: 
+        #     for status in hex_status:
+        #         print(status)
+        #     self.printed = True
     
 class InfoBar: 
     def __init__(self, players: list):
@@ -110,90 +134,99 @@ class InfoBar:
 #Technical Elements
 
 class GameManager: 
-    def __init__(self):
-        self.players = [None, None, None, None]
+    def __init__(self, game):
+        self.players = [Player(0), Player(1), Player(2), Player(3)]
         self.assign_players()
+        start_pos_set = False
+        self.game = game
+        self.game.changed = True
 
     def assign_players(self): 
-        for n in range(4): 
-            self.players[n] = Player(f"Player {n+1}", n)
+        for n, player in enumerate(self.players): 
+            player.set_name(f"Player {n+1}")
+
+    def set_start(self): 
+        for player in self.players: 
+            start_value = roll_die(20)
+            player.start_pos = start_value
+            player.choose_start()
 
 
 class Player: 
-    def __init__(self, name, position): 
-        self.name = info_font.render(name, True, BLACK)
+    def __init__(self, position): 
+        self.name = None
         self.position = position
-
+        self.start_pos = None
     
-    
-        
+    def set_name(self, name):
+        self.name = info_font.render(name, True, BLACK)
 
-#Miscellaneous Methods
-def shuffle(input_list: list): 
-    for n in range(1000): 
-        a = random.randint(0, len(input_list)-1)
-        input_list.append(input_list.pop(a))
-    return input_list
+    def choose_start(self): 
+        pass
 
 
+class Game: 
+    def __init__(self):
+        self.changed = False
+        self.main()
 
-
-# Game loop
-def main():
-    tile_dragging = False   
-    #initial conditions
-    game_space = HexGrid()
-    manager = GameManager()
-    info_space = InfoBar(manager.players)
-    tiles = shuffle([HexTile(n%4, n+1) for n in range(20)])
-
-    running = True
-    while running:
-        clock.tick(FPS)  # Limit the frame rate
-        
-        # Event handling
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
+    # Game loop
+    def main(self):
+        tile_dragging = False   
+        #initial conditions
+        game_space = HexGrid()
+        manager = GameManager(self)
+        info_space = InfoBar(manager.players)
+        tiles = shuffle([HexTile(n//5, n+1) for n in range(20)])
+        choosing_tile = False
+        running = True
+        while running:
+            clock.tick(FPS)  # Limit the frame rate
             
-            #Code for drag and dropping tiles, moot due to auto-assigment, may be revisited in the future. 
+            # Event handling
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+                
+                #Code for drag and dropping tiles, moot due to auto-assigment, may be revisited in the future. 
 
 
-            # elif event.type == pygame.MOUSEBUTTONDOWN:
-            #     if event.button == 1:            
-            #         if tile.tile.collidepoint(event.pos):
-            #             tile_dragging = True
-            #             mouse_x, mouse_y = event.pos
-            #             offset_x = tile.x - mouse_x
-            #             offset_y = tile.y - mouse_y
-            #             print('click')
+                # elif event.type == pygame.MOUSEBUTTONDOWN:
+                #     if event.button == 1:            
+                #         if tile.tile.collidepoint(event.pos):
+                #             tile_dragging = True
+                #             mouse_x, mouse_y = event.pos
+                #             offset_x = tile.x - mouse_x
+                #             offset_y = tile.y - mouse_y
+                #             print('click')
 
-            # elif event.type == pygame.MOUSEBUTTONUP:
-            #     if event.button == 1:            
-            #         tile_dragging = False
+                # elif event.type == pygame.MOUSEBUTTONUP:
+                #     if event.button == 1:            
+                #         tile_dragging = False
 
-            # elif event.type == pygame.MOUSEMOTION:
-            #     if tile_dragging:
-            #         mouse_x, mouse_y = event.pos
-            #         tile.x = mouse_x + offset_x
-            #         tile.y = mouse_y + offset_y
-
-
-        # Game logic goes here
-        
-        # Drawing
-        screen.fill(BROWN)  # Clear the screen with white
-        game_space.draw_hex_grid(4, 5, HEX_SIZE, tiles)
-        info_space.draw_sections()
-
-        
-        # Update display
-        pygame.display.flip()
+                # elif event.type == pygame.MOUSEMOTION:
+                #     if tile_dragging:
+                #         mouse_x, mouse_y = event.pos
+                #         tile.x = mouse_x + offset_x
+                #         tile.y = mouse_y + offset_y
 
 
+            # Game logic goes here
+            
+            # Drawing
+            screen.fill(BROWN)  # Clear the screen with white
+            info_space.draw_sections()
+            game_space.draw_hex_grid(4, 5, HEX_SIZE, tiles)
 
-    # Quit Pygame
-    pygame.quit()
+
+            
+            # Update display
+            pygame.display.flip()
+
+
+
+        # Quit Pygame
+        pygame.quit()
 
 if __name__ == "__main__": 
-    main()
+    game = Game()
