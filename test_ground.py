@@ -1,8 +1,15 @@
-class Game: 
+class Item:
     def __init__(self):
-        self.affected = False
+        self.value = 1
 
-my_list = [Game(), Game(), Game()]
-for instance in my_list: 
-    instance.affected = True
-print(my_list[1].affected)
+
+item = Item()
+
+item_list = []
+item_list_2 = []
+item_list.append(item)
+item_list_2.append(item)
+
+item_list[0].value = 2
+
+print(item_list_2[0].value)

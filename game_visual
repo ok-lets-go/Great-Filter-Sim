@@ -8,7 +8,13 @@ pygame.init()
 WIDTH, HEIGHT = 1200, 1200
 FPS = 60
 WHITE = (255, 255, 255)
+
+
+RED = (255, 0,  0)
+PURPLE = (128, 0, 128)
+ORANGE = (255, 165, 0)
 BLACK = (0, 0, 0)
+
 GREEN = pygame.Color("#A1FB03")
 BLUE = pygame.Color("#01E3FD")
 BROWN = pygame.Color("#C19A6B")
@@ -34,20 +40,47 @@ def shuffle(input_list: list):
         input_list.append(input_list.pop(a))
     return input_list
 
-def roll_die(self, die_value): 
+def roll_die(die_value): 
     return random.randint(1, die_value)
 
-#Visual Elements
+#Game Tokens
 
+class City: 
+    def __init__(self, color):
+        self.sprite = None
+        self.dimensions = (25,25)
+        self.placed = False
+        self.color = color
+
+    def place(self, pos):
+        x, y = pos
+        w, h = self.dimensions
+        pygame.draw.rect(screen, self.color
+                         , pygame.rect.Rect(x - w/2, y - h/2, w, h))
+        self.placed = True
+
+
+
+
+#Visual Elements
 class HexTile: 
     def __init__(self, composition, value):
         self.x, self.y = TILE_SPAWN
-        composition_list = ['llllll', 'llllww', 'llwwww', 'llwwww']
+        composition_list = ['llllll', 'lllllw',  'llllww', 'lllwww', 'llwwww', 'llwwww', 'llwwww', 'llwwww']
         self.colors = {'l':GREEN, 'w':BLUE}
         self.composition = composition_list[composition]
         self.rotation = random.randint(0, 5)
         self.value = value
-        self.piece_status = [{"index": acl[(n+self.rotation)%6], "occupied":False, "connections": []} for n in range(6)]
+        self.plots = [
+            {"index": acl[n], 
+             "buildable": self.composition[n] == 'l', 
+             "occupied":False, 
+             'token': None,
+             "connections": [], 
+             'center': None} 
+                                for n in range(6)
+            
+        ]
         self.place()
 
     def set_location(self, x, y): 
@@ -73,6 +106,7 @@ class HexTile:
                                  (self.x + (HEX_SIZE) * math.cos(math.radians(angle+60)), self.y + (HEX_SIZE) * math.sin(math.radians(angle+60)))
                                 ], width=3
             )
+            self.plots[index]['center'] = (self.x + (HEX_SIZE/2) * math.cos(math.radians(angle+30)), self.y + (HEX_SIZE/2) * math.sin(math.radians(angle+30)))
         for angle, letter in zip(range(0, 360, 60), tile_letters):
             tile_letter = hex_font.render(letter, True, BLACK)
             screen.blit(tile_letter, ((self.x + (HEX_SIZE-25) * math.cos(math.radians(angle+30 - 60*self.rotation))-tile_letter.width/2, self.y + (HEX_SIZE-25) * math.sin(math.radians(angle+30-60*self.rotation))-tile_letter.height/2)))
@@ -83,6 +117,7 @@ class HexTile:
 class HexGrid: 
     def __init__(self):
         self.grid = [[None for _ in range(5)] for _ in range(4)]
+        self.tile_list = [None for _ in range(20)]
         self.printed = False
         self.tile_highlight = None
 
@@ -108,6 +143,7 @@ class HexGrid:
                 hex_num = hex_font.render(str(tile.value), True, WHITE)
                 screen.blit(hex_num, (x - hex_num.width/2, y- hex_num.height/2))
                 self.grid[row][col] = tile
+                self.tile_list[tile.value-1] = tile
                 index += 1
         # hex_status = [land.piece_status for land in self.grid[0]]
         # if not self.printed: 
@@ -133,13 +169,29 @@ class InfoBar:
 
 #Technical Elements
 
-class GameManager: 
-    def __init__(self, game):
-        self.players = [Player(0), Player(1), Player(2), Player(3)]
+class GameEngine: 
+    def __init__(self, game, tiles, grid: HexGrid):
+        self.players = [Player(0, RED), Player(1, PURPLE), Player(2, ORANGE), Player(3, BLACK)]
         self.assign_players()
         start_pos_set = False
         self.game = game
-        self.game.changed = True
+        self.grid = grid
+        self.info_space = InfoBar(self.players)
+        self.draw_screen(tiles)
+        self.set_start()
+
+    def draw_screen(self, tiles): 
+        screen.fill(BROWN)  # Clear the screen with white
+        self.grid.draw_hex_grid(4, 5, HEX_SIZE, tiles)
+        self.place_tokens()
+        self.info_space.draw_sections()
+
+    def place_tokens(self): 
+        for tile in self.grid.tile_list: 
+            for plot in tile.plots: 
+                if plot['occupied']:
+                    plot['token'].place(plot['center'])
+                    
 
     def assign_players(self): 
         for n, player in enumerate(self.players): 
@@ -149,36 +201,64 @@ class GameManager:
         for player in self.players: 
             start_value = roll_die(20)
             player.start_pos = start_value
-            player.choose_start()
+            player.choose_start(self.grid)
 
 
 class Player: 
-    def __init__(self, position): 
+    def __init__(self, position, color): 
         self.name = None
         self.position = position
+        self.color=color
         self.start_pos = None
+        self.tokens = [City(self.color) for _ in range(5)]
     
+    def place_active_tokens(self):
+        ...
+
     def set_name(self, name):
         self.name = info_font.render(name, True, BLACK)
 
-    def choose_start(self): 
-        pass
+    def choose_start(self, grid: HexGrid): 
+        spawn_tile: HexTile = grid.tile_list[self.start_pos-1]
+        for plot in spawn_tile.plots:
+            if plot['buildable'] and not plot['occupied']:
+                plot['occupied'] = True
+                placed, index = True, 0
+                while placed:
+                    try:
+                        token = self.tokens[index]
+                        placed = token.placed
+                        if not placed: 
+                            plot['token'] = token
+                            return
+                        index += 1
+                    except IndexError:
+                        break
+        self.start_pos = roll_die(20)
+        self.choose_start(grid)
+
 
 
 class Game: 
     def __init__(self):
-        self.changed = False
         self.main()
 
     # Game loop
     def main(self):
         tile_dragging = False   
         #initial conditions
-        game_space = HexGrid()
-        manager = GameManager(self)
-        info_space = InfoBar(manager.players)
-        tiles = shuffle([HexTile(n//5, n+1) for n in range(20)])
+
+        tiles = shuffle([HexTile(n%8, n+1) for n in range(20)])
+        grid = HexGrid()
+        engine = GameEngine(self,tiles, grid)
         choosing_tile = False
+
+
+        
+
+
+
+
         running = True
         while running:
             clock.tick(FPS)  # Limit the frame rate
@@ -214,11 +294,7 @@ class Game:
             # Game logic goes here
             
             # Drawing
-            screen.fill(BROWN)  # Clear the screen with white
-            info_space.draw_sections()
-            game_space.draw_hex_grid(4, 5, HEX_SIZE, tiles)
-
-
+            engine.draw_screen(tiles)
             
             # Update display
             pygame.display.flip()
