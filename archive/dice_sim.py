@@ -8,7 +8,7 @@ for n in range(10000):
     die_upgradeable = False
     while not die_upgradeable:
         round_num += 1
-        player.roll_dice()
+        player.roll()
         die_upgradeable = player.resources['water']>=1 and player.resources['food']>=1 and player.resources['wood']>=1 and player.resources['brick']>=1
     round_count_list.append(round_num)
 

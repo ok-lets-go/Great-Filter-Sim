@@ -1,6 +1,6 @@
 import pygame, math, random
 from string import ascii_lowercase as acl
-
+from archive.game import Die
 # Initialize Pygame
 pygame.init()
 
@@ -40,7 +40,7 @@ def shuffle(input_list: list):
         input_list.append(input_list.pop(a))
     return input_list
 
-def roll_die(die_value): 
+def roll_dice(die_value): 
     return random.randint(1, die_value)
 
 #Game Tokens
@@ -154,7 +154,7 @@ class HexGrid:
 class InfoBar: 
     def __init__(self, players: list):
         self.players = players
-    
+        self.round_btn = pygame.Rect(WIDTH*2/5, 4.5*HEIGHT/6,2*WIDTH/10, 0.3*HEIGHT/6)
     def draw_sections(self): 
         offset = (10, 5)
         main_box = [(WIDTH/10, 5*HEIGHT/6), (8*WIDTH/10, 0.7*HEIGHT/6)]
@@ -165,6 +165,9 @@ class InfoBar:
             player: Player = self.players[n]
             screen.blit(player.name, (WIDTH/10+(n)*WIDTH/5 + offset[0], 5*HEIGHT/6 + offset[1]))
 
+        #next round button
+        pygame.draw.rect(screen, GREEN, self.round_btn)
+        pygame.draw.rect(screen, BLACK, self.round_btn, 5)
 
 
 #Technical Elements
@@ -176,7 +179,7 @@ class GameEngine:
         start_pos_set = False
         self.game = game
         self.grid = grid
-        self.info_space = InfoBar(self.players)
+        self.info_bar = InfoBar(self.players)
         self.draw_screen(tiles)
         self.set_start()
 
@@ -184,7 +187,7 @@ class GameEngine:
         screen.fill(BROWN)  # Clear the screen with white
         self.grid.draw_hex_grid(4, 5, HEX_SIZE, tiles)
         self.place_tokens()
-        self.info_space.draw_sections()
+        self.info_bar.draw_sections()
 
     def place_tokens(self): 
         for tile in self.grid.tile_list: 
@@ -199,9 +202,15 @@ class GameEngine:
 
     def set_start(self): 
         for player in self.players: 
-            start_value = roll_die(20)
+            start_value = roll_dice(20)
             player.start_pos = start_value
             player.choose_start(self.grid)
+
+    def play_round(self):
+        for player in self.players:
+            player.roll_action()
+            player.purchase_action()
+            player.card_action()
 
 
 class Player: 
@@ -210,10 +219,16 @@ class Player:
         self.position = position
         self.color=color
         self.start_pos = None
-        self.tokens = [City(self.color) for _ in range(5)]
-    
-    def place_active_tokens(self):
-        ...
+
+        self.cities = [City(self.color) for _ in range(5)]
+
+        self.resources = {
+            'water': 0,
+            'food': 0,
+            'wood': 0,
+            'brick': 0
+        }
+        self.dice = [Die()]
 
     def set_name(self, name):
         self.name = info_font.render(name, True, BLACK)
@@ -226,7 +241,7 @@ class Player:
                 placed, index = True, 0
                 while placed:
                     try:
-                        token = self.tokens[index]
+                        token = self.cities[index]
                         placed = token.placed
                         if not placed: 
                             plot['token'] = token
@@ -234,8 +249,20 @@ class Player:
                         index += 1
                     except IndexError:
                         break
-        self.start_pos = roll_die(20)
+        self.start_pos = roll_dice(20)
         self.choose_start(grid)
+    
+    def roll_action(self): 
+        die: Die
+        for die in self.dice(): 
+            roll_value = die.roll()
+            self.resources[die.die_resources[roll_value]] += 1
+    
+    def purchase_action(self):
+        ...
+
+    def card_action(self): 
+        ...
 
 
 
@@ -267,6 +294,11 @@ class Game:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
+
+                if event.type == pygame.MOUSEBUTTONUP:
+                    if engine.info_bar.round_btn.collidepoint(event.pos):
+                        engine.play_round()
+
                 
                 #Code for drag and dropping tiles, moot due to auto-assigment, may be revisited in the future. 
 

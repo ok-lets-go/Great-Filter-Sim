@@ -41,7 +41,7 @@ class Player:
             'brick': 0
         }
 
-    def roll_dice(self):
+    def roll(self):
         self.roll_values = []
         for die in self.dice:
             self.roll_values.append((f"d{die.value}", die.roll()))
@@ -92,7 +92,7 @@ class Game:
         self.game_loop()
 
     def roll(self):
-        self.active_player.roll_dice()
+        self.active_player.roll()
         roll_results = self.active_player.roll_values
         print(f'{self.active_player.name}: {roll_results}\n')
         self.next_player()
