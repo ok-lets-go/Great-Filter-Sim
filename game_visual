@@ -25,6 +25,11 @@ pygame.font.init()
 info_font = pygame.font.SysFont("verdana", 15)
 hex_font = pygame.font.SysFont("verdana", 10)
 
+fancy_font = pygame.font.SysFont(name='vivaldi', size=125)
+basic_font_small = pygame.font.SysFont(name='arial', size=12)
+basic_font_large = pygame.font.SysFont(name='arial', size=32)
+basic_font_xl = pygame.font.SysFont(name='arial', size=72, bold=True)
+
 # Create the game window
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Great Filter")
@@ -42,6 +47,15 @@ def shuffle(input_list: list):
 
 def roll_dice(die_value): 
     return random.randint(1, die_value)
+
+def generate_text(text, fg, bg, rect_center, border=None, border_width=5, font=basic_font_large):
+    return_text = font.render(text, True, fg, bg)
+    return_rect = return_text.get_rect()
+    return_rect.center = rect_center
+    if border:
+        border_rect = return_rect.inflate(border_width, border_width)
+        return (return_text, return_rect, (border, border_rect))
+    return return_text, return_rect
 
 #Game Tokens
 
@@ -155,6 +169,17 @@ class InfoBar:
     def __init__(self, players: list):
         self.players = players
         self.round_btn = pygame.Rect(WIDTH*2/5, 4.5*HEIGHT/6,2*WIDTH/10, 0.3*HEIGHT/6)
+        self.resource_icons = (
+            ('water', pygame.transform.scale(
+            pygame.image.load('assets/droplet.png'), (WIDTH*0.02, HEIGHT*0.02))),
+            ('food', pygame.transform.scale(
+            pygame.image.load('assets/food.png'), (WIDTH*0.02, HEIGHT*0.02))),
+            ('wood', pygame.transform.scale(
+            pygame.image.load('assets/log.png'), (WIDTH*0.02, HEIGHT*0.02))),
+            ('brick', pygame.transform.scale(
+            pygame.image.load('assets/stone.png'), (WIDTH*0.02, HEIGHT*0.02))) 
+        )
+        print(self.round_btn.center)
     def draw_sections(self): 
         offset = (10, 5)
         main_box = [(WIDTH/10, 5*HEIGHT/6), (8*WIDTH/10, 0.7*HEIGHT/6)]
@@ -164,10 +189,18 @@ class InfoBar:
             pygame.draw.rect(screen, BLACK, [(main_box[0][0]+(n)*WIDTH/5, main_box[0][1]), (main_box[1][0]/4, main_box[1][1])], width=1)
             player: Player = self.players[n]
             screen.blit(player.name, (WIDTH/10+(n)*WIDTH/5 + offset[0], 5*HEIGHT/6 + offset[1]))
+            #place icons on infobar
+            for index, icon in enumerate(self.resource_icons):
+                screen.blit(icon[1], (WIDTH/10+(n)*WIDTH/5 + 2 * offset[0] + index * 5 * offset[0], 5*HEIGHT/6 + 8 * offset[1]))
+                value_text, value_rect = generate_text(str(player.resources[icon[0]]), BLACK, WHITE, (WIDTH/10+(n)*WIDTH/5 + 2 * offset[0] + index * 5 * offset[0] + WIDTH/37, 5*HEIGHT/6 + 8 * offset[1] + HEIGHT/100))
+                screen.blit(value_text, value_rect)
 
         #next round button
         pygame.draw.rect(screen, GREEN, self.round_btn)
         pygame.draw.rect(screen, BLACK, self.round_btn, 5)
+        text, text_rect = generate_text("Play Round", BLACK, GREEN, self.round_btn.center)
+        screen.blit(text, text_rect)
+
 
 
 #Technical Elements
@@ -207,6 +240,8 @@ class GameEngine:
             player.choose_start(self.grid)
 
     def play_round(self):
+
+        print("Round Played")
         for player in self.players:
             player.roll_action()
             player.purchase_action()
@@ -254,7 +289,7 @@ class Player:
     
     def roll_action(self): 
         die: Die
-        for die in self.dice(): 
+        for die in self.dice: 
             roll_value = die.roll()
             self.resources[die.die_resources[roll_value]] += 1
     
