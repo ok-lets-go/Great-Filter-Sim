@@ -179,10 +179,12 @@ class InfoBar:
             ('brick', pygame.transform.scale(
             pygame.image.load('assets/stone.png'), (WIDTH*0.02, HEIGHT*0.02))) 
         )
-        print(self.round_btn.center)
+        self.round_num = 1
+
     def draw_sections(self): 
         offset = (10, 5)
         main_box = [(WIDTH/10, 5*HEIGHT/6), (8*WIDTH/10, 0.7*HEIGHT/6)]
+        round_num_box = [(WIDTH/10, 5*HEIGHT/6-HEIGHT/25), (WIDTH/10, 0.2*HEIGHT/6)]
         pygame.draw.rect(screen, WHITE, main_box)
         pygame.draw.rect(screen, BLACK, main_box, width=4)
         for n in range(4): 
@@ -200,6 +202,8 @@ class InfoBar:
         pygame.draw.rect(screen, BLACK, self.round_btn, 5)
         text, text_rect = generate_text("Play Round", BLACK, GREEN, self.round_btn.center)
         screen.blit(text, text_rect)
+        round_value, round_value_rect = generate_text(f"Round {self.round_num}", BLACK, BROWN, pygame.Rect(round_num_box).center)
+        screen.blit(round_value, round_value_rect)
 
 
 
@@ -240,8 +244,7 @@ class GameEngine:
             player.choose_start(self.grid)
 
     def play_round(self):
-
-        print("Round Played")
+        self.info_bar.round_num += 1
         for player in self.players:
             player.roll_action()
             player.purchase_action()
