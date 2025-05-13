@@ -5,10 +5,13 @@ from archive.game import Die
 pygame.init()
 
 # Constants
-WIDTH, HEIGHT = 1200, 1200
+
 FPS = 60
 WHITE = (255, 255, 255)
 
+screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+WIDTH, HEIGHT = pygame.display.get_window_size()
+pygame.display.set_caption("Great Filter")
 
 RED = (255, 0,  0)
 PURPLE = (128, 0, 128)
@@ -18,7 +21,8 @@ BLACK = (0, 0, 0)
 GREEN = pygame.Color("#A1FB03")
 BLUE = pygame.Color("#01E3FD")
 BROWN = pygame.Color("#C19A6B")
-HEX_SIZE = 100
+
+HEX_SIZE = WIDTH/22
 TILE_SPAWN = (5*WIDTH//6, 5*HEIGHT//6)
 
 pygame.font.init()
@@ -27,12 +31,11 @@ hex_font = pygame.font.SysFont("verdana", 10)
 
 fancy_font = pygame.font.SysFont(name='vivaldi', size=125)
 basic_font_small = pygame.font.SysFont(name='arial', size=12)
-basic_font_large = pygame.font.SysFont(name='arial', size=32)
+basic_font_large = pygame.font.SysFont(name='arial', size=int(HEIGHT/45))
 basic_font_xl = pygame.font.SysFont(name='arial', size=72, bold=True)
 
 # Create the game window
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Great Filter")
+
 
 # Clock to control frame rate
 clock = pygame.time.Clock()
@@ -62,7 +65,8 @@ def generate_text(text, fg, bg, rect_center, border=None, border_width=5, font=b
 class City: 
     def __init__(self, color):
         self.sprite = None
-        self.dimensions = (25,25)
+        edge = int(HEIGHT/57.6)
+        self.dimensions = (edge, edge)
         self.placed = False
         self.color = color
 
@@ -123,7 +127,7 @@ class HexTile:
             self.plots[index]['center'] = (self.x + (HEX_SIZE/2) * math.cos(math.radians(angle+30)), self.y + (HEX_SIZE/2) * math.sin(math.radians(angle+30)))
         for angle, letter in zip(range(0, 360, 60), tile_letters):
             tile_letter = hex_font.render(letter, True, BLACK)
-            screen.blit(tile_letter, ((self.x + (HEX_SIZE-25) * math.cos(math.radians(angle+30 - 60*self.rotation))-tile_letter.width/2, self.y + (HEX_SIZE-25) * math.sin(math.radians(angle+30-60*self.rotation))-tile_letter.height/2)))
+            screen.blit(tile_letter, ((self.x + (HEX_SIZE-HEX_SIZE/4) * math.cos(math.radians(angle+30 - 60*self.rotation))-tile_letter.width/2, self.y + (HEX_SIZE-25) * math.sin(math.radians(angle+30-60*self.rotation))-tile_letter.height/2)))
 
 
 
@@ -169,20 +173,38 @@ class InfoBar:
     def __init__(self, players: list):
         self.players = players
         self.round_btn = pygame.Rect(WIDTH*2/5, 4.5*HEIGHT/6,2*WIDTH/10, 0.3*HEIGHT/6)
+        width_scale = 0.035 * HEIGHT/ (WIDTH+HEIGHT)
+        height_scale = 0.035 * WIDTH/ (WIDTH+HEIGHT)
         self.resource_icons = (
             ('water', pygame.transform.scale(
-            pygame.image.load('assets/droplet.png'), (WIDTH*0.02, HEIGHT*0.02))),
+            pygame.image.load('assets/droplet.png'), (WIDTH* width_scale, HEIGHT* height_scale))),
             ('food', pygame.transform.scale(
-            pygame.image.load('assets/food.png'), (WIDTH*0.02, HEIGHT*0.02))),
+            pygame.image.load('assets/food.png'), (WIDTH* width_scale, HEIGHT* height_scale))),
             ('wood', pygame.transform.scale(
-            pygame.image.load('assets/log.png'), (WIDTH*0.02, HEIGHT*0.02))),
+            pygame.image.load('assets/log.png'), (WIDTH* width_scale, HEIGHT* height_scale))),
             ('brick', pygame.transform.scale(
-            pygame.image.load('assets/stone.png'), (WIDTH*0.02, HEIGHT*0.02))) 
+            pygame.image.load('assets/stone.png'), (WIDTH* width_scale, HEIGHT* height_scale))) 
         )
+
+        self.die_icons = {
+            4: pygame.transform.scale(
+            pygame.image.load('assets/dice/d4.png'), (WIDTH * width_scale, HEIGHT* height_scale)),
+            6:pygame.transform.scale(
+            pygame.image.load('assets/dice/d6.png'), (WIDTH * width_scale, HEIGHT* height_scale)),
+            8:pygame.transform.scale(
+            pygame.image.load('assets/dice/d8.png'), (WIDTH * width_scale, HEIGHT* height_scale)),
+            10:pygame.transform.scale(
+            pygame.image.load('assets/dice/d10.png'), (WIDTH * width_scale, HEIGHT* height_scale)),
+            12:pygame.transform.scale(
+            pygame.image.load('assets/dice/d12.png'), (WIDTH * width_scale, HEIGHT* height_scale)),
+            20:pygame.transform.scale(
+            pygame.image.load('assets/dice/d20.png'), (WIDTH * width_scale, HEIGHT* height_scale)),
+        }
+
         self.round_num = 1
 
     def draw_sections(self): 
-        offset = (10, 5)
+        offset = (WIDTH/150, HEIGHT/300)
         main_box = [(WIDTH/10, 5*HEIGHT/6), (8*WIDTH/10, 0.7*HEIGHT/6)]
         round_num_box = [(WIDTH/10, 5*HEIGHT/6-HEIGHT/25), (WIDTH/10, 0.2*HEIGHT/6)]
         pygame.draw.rect(screen, WHITE, main_box)
@@ -194,13 +216,16 @@ class InfoBar:
             #place icons on infobar
             for index, icon in enumerate(self.resource_icons):
                 screen.blit(icon[1], (WIDTH/10+(n)*WIDTH/5 + 2 * offset[0] + index * 5 * offset[0], 5*HEIGHT/6 + 8 * offset[1]))
-                value_text, value_rect = generate_text(str(player.resources[icon[0]]), BLACK, WHITE, (WIDTH/10+(n)*WIDTH/5 + 2 * offset[0] + index * 5 * offset[0] + WIDTH/37, 5*HEIGHT/6 + 8 * offset[1] + HEIGHT/100))
+                value_text, value_rect = generate_text(str(player.resources[icon[0]]), BLACK, WHITE, (WIDTH/10+(n)*WIDTH/5 + 2 * offset[0] + index * 5 * offset[0] + WIDTH/45, 5*HEIGHT/6 + 8 * offset[1] + HEIGHT/100))
                 screen.blit(value_text, value_rect)
+            die: Die
+            for index, die in enumerate(player.dice): 
+                screen.blit(self.die_icons[die.value], (WIDTH/10+(n)*WIDTH/5 + 2 * offset[0] + index * 5 * offset[0], 5*HEIGHT/6 + 8 * offset[1] + HEIGHT / 20 ))
 
         #next round button
         pygame.draw.rect(screen, GREEN, self.round_btn)
         pygame.draw.rect(screen, BLACK, self.round_btn, 5)
-        text, text_rect = generate_text("Play Round", BLACK, GREEN, self.round_btn.center)
+        text, text_rect = generate_text("Play Round",  BLACK, GREEN, self.round_btn.center)
         screen.blit(text, text_rect)
         round_value, round_value_rect = generate_text(f"Round {self.round_num}", BLACK, BROWN, pygame.Rect(round_num_box).center)
         screen.blit(round_value, round_value_rect)
@@ -317,8 +342,8 @@ class Game:
         grid = HexGrid()
         engine = GameEngine(self,tiles, grid)
         choosing_tile = False
-
-
+        quit_button = pygame.Rect(9/10*WIDTH, HEIGHT/30, WIDTH/12, HEIGHT/20)
+        quit_text, quit_rect = generate_text("Quit Sim", BLACK, GREEN, quit_button.center)
         
 
 
@@ -336,6 +361,9 @@ class Game:
                 if event.type == pygame.MOUSEBUTTONUP:
                     if engine.info_bar.round_btn.collidepoint(event.pos):
                         engine.play_round()
+                    
+                    if quit_button.collidepoint(event.pos): 
+                        running = False
 
                 
                 #Code for drag and dropping tiles, moot due to auto-assigment, may be revisited in the future. 
@@ -365,6 +393,11 @@ class Game:
             
             # Drawing
             engine.draw_screen(tiles)
+            pygame.draw.rect(screen, GREEN, quit_button)
+            pygame.draw.rect(screen, BLACK, quit_button, 5)
+            screen.blit(quit_text, quit_rect)
+
+
             
             # Update display
             pygame.display.flip()
