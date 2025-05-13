@@ -9,7 +9,7 @@ pygame.init()
 FPS = 60
 WHITE = (255, 255, 255)
 
-screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+screen = pygame.display.set_mode((1200, 800))
 WIDTH, HEIGHT = pygame.display.get_window_size()
 pygame.display.set_caption("Great Filter")
 
@@ -89,6 +89,7 @@ class HexTile:
         self.composition = composition_list[composition]
         self.rotation = random.randint(0, 5)
         self.value = value
+        self.adjacencies = None
         self.plots = [
             {"index": acl[n], 
              "buildable": self.composition[n] == 'l', 
@@ -96,9 +97,11 @@ class HexTile:
              'token': None,
              "connections": [], 
              'center': None} 
-                                for n in range(6)
-            
+            for n in range(6)            
         ]
+        print(self.plots)
+
+
         self.place()
 
     def set_location(self, x, y): 
@@ -109,7 +112,7 @@ class HexTile:
         #draw hexagon
         self.tile = pygame.draw.polygon(screen, BLACK, [(self.x + HEX_SIZE * math.cos(math.radians(angle)), self.y + HEX_SIZE * math.sin(math.radians(angle))) for angle in range(0, 360, 60)], 10)
         tile_letters = ['a', 'b', 'c', 'd', 'e', 'f']
-        for angle, letter in zip(range(0, 360, 60), tile_letters):
+        for angle in range(0, 360, 60):
             index = (angle//60 + self.rotation) % 6
             #draw hex triangle fill
             pygame.draw.polygon(screen, self.colors[self.composition[index]], 
@@ -129,7 +132,10 @@ class HexTile:
             tile_letter = hex_font.render(letter, True, BLACK)
             screen.blit(tile_letter, ((self.x + (HEX_SIZE-HEX_SIZE/4) * math.cos(math.radians(angle+30 - 60*self.rotation))-tile_letter.width/2, self.y + (HEX_SIZE-25) * math.sin(math.radians(angle+30-60*self.rotation))-tile_letter.height/2)))
 
-
+    # def adjacency_debug(self): 
+    #     for angle in range(0, 360, 60):
+    #         adjaceny_value = hex_font.render(str(int(self.adjacencies[angle//60])), True, BLACK)
+    #         screen.blit(adjaceny_value, ((self.x + (HEX_SIZE-HEX_SIZE/4) * math.cos(math.radians(angle+30 - 60*self.rotation))-adjaceny_value.width/2, self.y + (HEX_SIZE-25) * math.sin(math.radians(angle+30-60*self.rotation))-adjaceny_value.height/2)))
 
 
 class HexGrid: 
@@ -138,6 +144,7 @@ class HexGrid:
         self.tile_list = [None for _ in range(20)]
         self.printed = False
         self.tile_highlight = None
+        self.printed = False
 
     def draw_hexagon(self, surface, color, position, size):
         x, y = position
@@ -158,16 +165,46 @@ class HexGrid:
                 tile.set_location(x, y)
                 tile.place()
                 pygame.draw.circle(screen, BLACK, (x, y), 10)
-                hex_num = hex_font.render(str(tile.value), True, WHITE)
+                hex_num = hex_font.render(str(tile.value)+" "+str(tile.rotation), True, WHITE)
                 screen.blit(hex_num, (x - hex_num.width/2, y- hex_num.height/2))
                 self.grid[row][col] = tile
                 self.tile_list[tile.value-1] = tile
                 index += 1
-        # hex_status = [land.piece_status for land in self.grid[0]]
-        # if not self.printed: 
-        #     for status in hex_status:
-        #         print(status)
-        #     self.printed = True
+        
+        for row in range(rows): 
+            for col in range(cols): 
+                self.detect_adjacencies(row, col)
+                tile:HexTile
+                tile = self.grid[row][col]
+                # tile.adjacency_debug()
+        
+
+
+
+    def detect_adjacencies(self, row, col):
+        def rotate_list(data):
+            if not data:
+                return data
+            last_element = data[-1]
+            rotated_list = [last_element] + data[:-1]
+            return rotated_list
+        tile: HexTile
+        tile = self.grid[row][col]
+        rotation = tile.rotation
+        adjacencies = [
+            (col != 4) and (row != 3 or col%2 == 0), 
+            (row != 3), 
+            (col != 0) and (row != 3 or col%2 == 0), 
+            (col != 0) and (row != 0 or col%2 == 1), 
+            (row != 0), 
+            (col != 4) and (row != 0 or col%2 == 1)
+        ]
+        for _ in range(rotation): 
+            adjacencies = rotate_list(adjacencies)
+        tile.adjacencies = adjacencies
+        plot: dict
+        for plot in tile.plots: 
+            ...     
     
 class InfoBar: 
     def __init__(self, players: list):
