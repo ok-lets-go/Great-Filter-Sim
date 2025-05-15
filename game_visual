@@ -79,11 +79,26 @@ class City:
 
 
 
+class Plot: 
+    def __init__(self, spot, composition, value):
+        self.index = acl[spot]
+        self.buildable = composition[spot] == 'l'
+        self.occupied = False
+        self.token = None
+        self.connections = []
+        self.center = None
+
+        self.identity = (value, self.index)
+        self.adjacency = None
+
+
 
 #Visual Elements
 class HexTile: 
     def __init__(self, composition, value):
-        self.x, self.y = TILE_SPAWN
+        self.x, self.y = 0, 0
+        self.coordinate = None
+
         composition_list = ['llllll', 'lllllw',  'llllww', 'lllwww', 'llwwww', 'llwwww', 'llwwww', 'llwwww']
         self.colors = {'l':GREEN, 'w':BLUE}
         self.composition = composition_list[composition]
@@ -91,15 +106,9 @@ class HexTile:
         self.value = value
         self.adjacencies = None
         self.plots = [
-            {"index": acl[n], 
-             "buildable": self.composition[n] == 'l', 
-             "occupied":False, 
-             'token': None,
-             "connections": [], 
-             'center': None} 
+            Plot(n, self.composition, value)
             for n in range(6)            
         ]
-        print(self.plots)
 
 
         self.place()
@@ -108,6 +117,8 @@ class HexTile:
         self.x = x
         self.y = y
 
+    def set_coordinates(self, col, row): 
+        self.coordinate = (col, row)
     def place(self): 
         #draw hexagon
         self.tile = pygame.draw.polygon(screen, BLACK, [(self.x + HEX_SIZE * math.cos(math.radians(angle)), self.y + HEX_SIZE * math.sin(math.radians(angle))) for angle in range(0, 360, 60)], 10)
@@ -127,15 +138,15 @@ class HexTile:
                                  (self.x + (HEX_SIZE) * math.cos(math.radians(angle+60)), self.y + (HEX_SIZE) * math.sin(math.radians(angle+60)))
                                 ], width=3
             )
-            self.plots[index]['center'] = (self.x + (HEX_SIZE/2) * math.cos(math.radians(angle+30)), self.y + (HEX_SIZE/2) * math.sin(math.radians(angle+30)))
+            self.plots[index].center = (self.x + (HEX_SIZE/2) * math.cos(math.radians(angle+30)), self.y + (HEX_SIZE/2) * math.sin(math.radians(angle+30)))
         for angle, letter in zip(range(0, 360, 60), tile_letters):
             tile_letter = hex_font.render(letter, True, BLACK)
             screen.blit(tile_letter, ((self.x + (HEX_SIZE-HEX_SIZE/4) * math.cos(math.radians(angle+30 - 60*self.rotation))-tile_letter.width/2, self.y + (HEX_SIZE-25) * math.sin(math.radians(angle+30-60*self.rotation))-tile_letter.height/2)))
 
-    # def adjacency_debug(self): 
-    #     for angle in range(0, 360, 60):
-    #         adjaceny_value = hex_font.render(str(int(self.adjacencies[angle//60])), True, BLACK)
-    #         screen.blit(adjaceny_value, ((self.x + (HEX_SIZE-HEX_SIZE/4) * math.cos(math.radians(angle+30 - 60*self.rotation))-adjaceny_value.width/2, self.y + (HEX_SIZE-25) * math.sin(math.radians(angle+30-60*self.rotation))-adjaceny_value.height/2)))
+    def adjacency_debug(self): 
+        for angle in range(0, 360, 60):
+            adjaceny_value = hex_font.render(str(int(self.adjacencies[angle//60])), True, BLACK)
+            screen.blit(adjaceny_value, ((self.x + (HEX_SIZE-HEX_SIZE/4) * math.cos(math.radians(angle+30 - 60*self.rotation))-adjaceny_value.width/2, self.y + (HEX_SIZE-25) * math.sin(math.radians(angle+30-60*self.rotation))-adjaceny_value.height/2)))
 
 
 class HexGrid: 
@@ -163,6 +174,7 @@ class HexGrid:
                 x = col * hex_size * 1.5 + offset_x
                 y = row * hex_size * math.sqrt(3) + (hex_size * math.sqrt(3) / 2 * (col % 2)) + offset_y
                 tile.set_location(x, y)
+                tile.set_coordinates(col, row)
                 tile.place()
                 pygame.draw.circle(screen, BLACK, (x, y), 10)
                 hex_num = hex_font.render(str(tile.value)+" "+str(tile.rotation), True, WHITE)
@@ -289,10 +301,12 @@ class GameEngine:
         self.info_bar.draw_sections()
 
     def place_tokens(self): 
+        tile: HexTile
         for tile in self.grid.tile_list: 
+            plot: Plot
             for plot in tile.plots: 
-                if plot['occupied']:
-                    plot['token'].place(plot['center'])
+                if plot.occupied:
+                    plot.token.place(plot.center)
                     
 
     def assign_players(self): 
@@ -336,15 +350,15 @@ class Player:
     def choose_start(self, grid: HexGrid): 
         spawn_tile: HexTile = grid.tile_list[self.start_pos-1]
         for plot in spawn_tile.plots:
-            if plot['buildable'] and not plot['occupied']:
-                plot['occupied'] = True
+            if plot.buildable and not plot.occupied:
+                plot.occupied = True
                 placed, index = True, 0
                 while placed:
                     try:
                         token = self.cities[index]
                         placed = token.placed
                         if not placed: 
-                            plot['token'] = token
+                            plot.token = token
                             return
                         index += 1
                     except IndexError:
