@@ -1,2 +1,11 @@
-my_tuple = (1, 2) + (3, 4)
-print(my_tuple)
+row = 1
+col = 1
+index_shift = ((int(row % 2 == 1), 1),
+            (1, 0),
+            (1*int(row % 2 == 1), -1),
+            (-1*int(row % 2 == 0), -1),
+            (-1, 0),
+            (-1*int(row % 2 == 0), 1)
+)
+
+print(index_shift)

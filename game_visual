@@ -82,7 +82,7 @@ class City:
 class Plot: 
     def __init__(self, spot, composition, value, rotation):
         self.rotation = rotation
-        self.index = acl[spot + rotation % 6]
+        self.index = acl[(spot + rotation) % 6]
         self.buildable = composition[spot] == 'l'
         self.occupied = False
         self.token = None
@@ -91,7 +91,7 @@ class Plot:
 
 
         self.identity = (value, self.index)
-        self.adjacency = None
+        self.adjacencies = None
 
 
 
@@ -124,7 +124,7 @@ class HexTile:
     def place(self): 
         #draw hexagon
         self.tile = pygame.draw.polygon(screen, BLACK, [(self.x + HEX_SIZE * math.cos(math.radians(angle)), self.y + HEX_SIZE * math.sin(math.radians(angle))) for angle in range(0, 360, 60)], 10)
-        tile_letters = ['a', 'b', 'c', 'd', 'e', 'f']
+        
         for angle in range(0, 360, 60):
             index = (angle//60 + self.rotation) % 6
             #draw hex triangle fill
@@ -141,14 +141,15 @@ class HexTile:
                                 ], width=3
             )
             self.plots[index].center = (self.x + (HEX_SIZE/2) * math.cos(math.radians(angle+30)), self.y + (HEX_SIZE/2) * math.sin(math.radians(angle+30)))
-        # for angle, letter in zip(range(0, 360, 60), tile_letters):
-        #     tile_letter = hex_font.render(letter, True, BLACK)
-        #     screen.blit(tile_letter, ((self.x + (HEX_SIZE-HEX_SIZE/4) * math.cos(math.radians(angle+30))-tile_letter.width/2, self.y + (HEX_SIZE-25) * math.sin(math.radians(angle+30))-tile_letter.height/2)))
+        for angle, plot in zip(range(0, 360, 60), self.plots):
+            tile_letter = hex_font.render(plot.index, True, BLACK)
+            screen.blit(tile_letter, ((self.x + (HEX_SIZE-HEX_SIZE/3) * math.cos(math.radians(angle+30))-tile_letter.width/2, self.y + (HEX_SIZE-HEX_SIZE/3) * math.sin(math.radians(angle+30))-tile_letter.height/2)))
 
     def adjacency_debug(self): 
         for angle in range(0, 360, 60):
-            adjaceny_value = hex_font.render(str(int(self.adjacencies[angle//60])), True, BLACK)
-            screen.blit(adjaceny_value, ((self.x + (HEX_SIZE-HEX_SIZE/4) * math.cos(math.radians(angle+30))-adjaceny_value.width/2, self.y + (HEX_SIZE-25) * math.sin(math.radians(angle+30))-adjaceny_value.height/2)))
+            index = angle//60
+            adjaceny_value = hex_font.render(str(int(self.adjacencies[index])), True, BLACK)
+            screen.blit(adjaceny_value, ((self.x + (HEX_SIZE-HEX_SIZE/3) * math.cos(math.radians(angle+30))-adjaceny_value.width/2, self.y + (HEX_SIZE-HEX_SIZE/3) * math.sin(math.radians(angle+30))-adjaceny_value.height/2)))
 
 
 class HexGrid: 
@@ -190,7 +191,7 @@ class HexGrid:
                 self.detect_adjacencies(row, col)
                 tile:HexTile
                 tile = self.grid[row][col]
-                tile.adjacency_debug()
+                # tile.adjacency_debug()
         
 
 
@@ -216,9 +217,9 @@ class HexGrid:
         # for _ in range(rotation): 
         #     adjacencies = rotate_list(adjacencies)
         tile.adjacencies = adjacencies
-        plot: dict
+        plot: Plot
         for plot in tile.plots: 
-            ...     
+            value, index = plot.identity
     
 class InfoBar: 
     def __init__(self, players: list):
