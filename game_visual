@@ -82,7 +82,8 @@ class City:
 class Plot: 
     def __init__(self, spot, composition, value, rotation):
         self.rotation = rotation
-        self.index = acl[(spot + rotation) % 6]
+        self.index = spot
+        self.letter = acl[(spot + rotation) % 6]
         self.buildable = composition[(spot + rotation) % 6] == 'l'
         self.occupied = False
         self.token = None
@@ -121,6 +122,7 @@ class HexTile:
 
     def set_coordinates(self, col, row): 
         self.coordinate = (col, row)
+
     def place(self): 
         #draw hexagon
         self.tile = pygame.draw.polygon(screen, BLACK, [(self.x + HEX_SIZE * math.cos(math.radians(angle)), self.y + HEX_SIZE * math.sin(math.radians(angle))) for angle in range(0, 360, 60)], 10)
@@ -142,7 +144,7 @@ class HexTile:
             )
             self.plots[index].center = (self.x + (HEX_SIZE/2) * math.cos(math.radians(angle+30+60*self.rotation)), self.y + (HEX_SIZE/2) * math.sin(math.radians(angle+30+60*self.rotation)))
         for angle, plot in zip(range(0, 360, 60), self.plots):
-            tile_letter = hex_font.render(plot.index, True, BLACK)
+            tile_letter = hex_font.render(plot.letter, True, BLACK)
             screen.blit(tile_letter, ((self.x + (HEX_SIZE-HEX_SIZE/3) * math.cos(math.radians(angle+30))-tile_letter.width/2, self.y + (HEX_SIZE-HEX_SIZE/3) * math.sin(math.radians(angle+30))-tile_letter.height/2)))
 
     def adjacency_debug(self): 
@@ -180,7 +182,11 @@ class HexGrid:
                 tile.set_coordinates(col, row)
                 tile.place()
                 pygame.draw.circle(screen, BLACK, (x, y), 10)
-                hex_num = hex_font.render(str(tile.value)+" "+str(tile.rotation), True, WHITE)
+                hex_num = hex_font.render(str(tile.value), True, WHITE)
+
+                ## also shows rotation value of given hex for debug purposes
+                # hex_num = hex_font.render(str(tile.value)+" "+str(tile.rotation), True, WHITE)
+                
                 screen.blit(hex_num, (x - hex_num.width/2, y- hex_num.height/2))
                 self.grid[row][col] = tile
                 self.tile_list[tile.value-1] = tile
@@ -194,8 +200,6 @@ class HexGrid:
                 # tile.adjacency_debug()
         
 
-
-
     def detect_adjacencies(self, row, col):
         def rotate_list(data):
             if not data:
@@ -203,10 +207,30 @@ class HexGrid:
             last_element = data[-1]
             rotated_list = [last_element] + data[:-1]
             return rotated_list
+
+        def get_plot_from_adjacent_tile(identity): 
+            #table for how to shift row and column based on plot index
+            tile_shift = (
+                (int(col % 2 == 1), 1),
+                (1, 0),
+                (1*int(col % 2 == 1), -1),
+                (-1*int(col % 2 == 0), -1),
+                (-1, 0),
+                (-1*int(col % 2 == 0), 1)
+            )
+
+            index = identity[1]
+            row_shift, col_shift = tile_shift[index]
+            adj_tile: HexTile
+            adj_tile = self.grid[(row+row_shift)][(col+col_shift)]
+            adj_identity = (adj_tile.value, (index+3)%6)
+            return adj_identity
+
         tile: HexTile
         tile = self.grid[row][col]
         rotation = tile.rotation
-        adjacencies = [
+        #truth table to determine if an adjacent tile exists for a given plot. 
+        adjacency_table = [
             (col != 4) and (row != 3 or col%2 == 0), 
             (row != 3), 
             (col != 0) and (row != 3 or col%2 == 0), 
@@ -216,10 +240,21 @@ class HexGrid:
         ]
         # for _ in range(rotation): 
         #     adjacencies = rotate_list(adjacencies)
-        tile.adjacencies = adjacencies
+        tile.adjacencies = adjacency_table
         plot: Plot
-        for plot in tile.plots: 
+        for plot_adjacent, plot in zip(adjacency_table, tile.plots): 
             value, index = plot.identity
+            adjacent_plots = [
+                (value, (index+1)%6),
+                (value, (index-1)%6)
+            ]
+            if plot_adjacent: 
+                adjacent_plots.append(get_plot_from_adjacent_tile(plot.identity))
+            
+            plot.adjacencies = adjacent_plots
+
+
+
     
 class InfoBar: 
     def __init__(self, players: list):
@@ -321,7 +356,7 @@ class GameEngine:
         for player in self.players: 
             start_value = roll_dice(20)
             player.start_pos = start_value
-            player.choose_start(self.grid, self.start_locations)
+            player.choose_start(self.grid, self)
 
     def play_round(self):
         self.info_bar.round_num += 1
@@ -351,9 +386,10 @@ class Player:
     def set_name(self, name):
         self.name = info_font.render(name, True, BLACK)
 
-    def choose_start(self, grid: HexGrid, start_locations): 
+    def choose_start(self, grid: HexGrid, engine:GameEngine): 
         spawn_tile: HexTile = grid.tile_list[self.start_pos-1]
-        if self.start_pos not in start_locations: 
+        if self.start_pos not in engine.start_locations: 
+            engine.start_locations.append(self.start_pos)
             for plot in spawn_tile.plots:
                 if plot.buildable and not plot.occupied:
                     plot.occupied = True
@@ -369,7 +405,7 @@ class Player:
                         except IndexError:
                             break
         self.start_pos = roll_dice(20)
-        self.choose_start(grid)
+        self.choose_start(grid, engine)
     
     def roll_action(self): 
         die: Die
@@ -401,9 +437,14 @@ class Game:
         quit_button = pygame.Rect(9/10*WIDTH, HEIGHT/30, WIDTH/12, HEIGHT/20)
         quit_text, quit_rect = generate_text("Quit Sim", BLACK, GREEN, quit_button.center)
         
+        #test to ensure plot adjacency works correctly
+        def tile_debug(row, col):
+            my_tile: HexTile
+            my_tile = grid.grid[row][col]
+            for plot in my_tile.plots: 
+                print(plot.adjacencies)
 
-
-
+        # tile_debug(2, 3)
 
         running = True
         while running:
