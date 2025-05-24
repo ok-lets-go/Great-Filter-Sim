@@ -83,7 +83,7 @@ class Plot:
     def __init__(self, spot, composition, value, rotation):
         self.rotation = rotation
         self.index = acl[(spot + rotation) % 6]
-        self.buildable = composition[spot] == 'l'
+        self.buildable = composition[(spot + rotation) % 6] == 'l'
         self.occupied = False
         self.token = None
         self.connections = []
@@ -140,7 +140,7 @@ class HexTile:
                                  (self.x + (HEX_SIZE) * math.cos(math.radians(angle+60)), self.y + (HEX_SIZE) * math.sin(math.radians(angle+60)))
                                 ], width=3
             )
-            self.plots[index].center = (self.x + (HEX_SIZE/2) * math.cos(math.radians(angle+30)), self.y + (HEX_SIZE/2) * math.sin(math.radians(angle+30)))
+            self.plots[index].center = (self.x + (HEX_SIZE/2) * math.cos(math.radians(angle+30+60*self.rotation)), self.y + (HEX_SIZE/2) * math.sin(math.radians(angle+30+60*self.rotation)))
         for angle, plot in zip(range(0, 360, 60), self.plots):
             tile_letter = hex_font.render(plot.index, True, BLACK)
             screen.blit(tile_letter, ((self.x + (HEX_SIZE-HEX_SIZE/3) * math.cos(math.radians(angle+30))-tile_letter.width/2, self.y + (HEX_SIZE-HEX_SIZE/3) * math.sin(math.radians(angle+30))-tile_letter.height/2)))
@@ -294,6 +294,7 @@ class GameEngine:
         self.game = game
         self.grid = grid
         self.info_bar = InfoBar(self.players)
+        self.start_locations = []
         self.draw_screen(tiles)
         self.set_start()
 
@@ -320,7 +321,7 @@ class GameEngine:
         for player in self.players: 
             start_value = roll_dice(20)
             player.start_pos = start_value
-            player.choose_start(self.grid)
+            player.choose_start(self.grid, self.start_locations)
 
     def play_round(self):
         self.info_bar.round_num += 1
@@ -350,22 +351,23 @@ class Player:
     def set_name(self, name):
         self.name = info_font.render(name, True, BLACK)
 
-    def choose_start(self, grid: HexGrid): 
+    def choose_start(self, grid: HexGrid, start_locations): 
         spawn_tile: HexTile = grid.tile_list[self.start_pos-1]
-        for plot in spawn_tile.plots:
-            if plot.buildable and not plot.occupied:
-                plot.occupied = True
-                placed, index = True, 0
-                while placed:
-                    try:
-                        token = self.cities[index]
-                        placed = token.placed
-                        if not placed: 
-                            plot.token = token
-                            return
-                        index += 1
-                    except IndexError:
-                        break
+        if self.start_pos not in start_locations: 
+            for plot in spawn_tile.plots:
+                if plot.buildable and not plot.occupied:
+                    plot.occupied = True
+                    placed, index = True, 0
+                    while placed:
+                        try:
+                            token = self.cities[index]
+                            placed = token.placed
+                            if not placed: 
+                                plot.token = token
+                                return
+                            index += 1
+                        except IndexError:
+                            break
         self.start_pos = roll_dice(20)
         self.choose_start(grid)
     
