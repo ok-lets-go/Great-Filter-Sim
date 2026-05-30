@@ -9,7 +9,7 @@ for n in range(10000):
     while not die_upgradeable:
         round_num += 1
         player.roll()
-        die_upgradeable = player.resources['water']>=1 and player.resources['food']>=1 and player.resources['wood']>=1 and player.resources['brick']>=1
+        die_upgradeable = player.resources['water']>=0 and player.resources['food']>=0 and player.resources['wood']>=1 and player.resources['stone']>=1
     round_count_list.append(round_num)
 
 print("Average rolls to achieve goal:", sum(round_count_list)/len(round_count_list))
