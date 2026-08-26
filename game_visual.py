@@ -1,23 +1,33 @@
-import pygame
-import math
-import random
+"""
+Nomenclature: 
+Grid/HexGrid (used interchangably) = the overall play area
+Tile/HexTile (used interchangably) = a hex tile that contains 6 separate areas
+Plot = a single area on a Tile, each tile contains 6
+"""
+
+import pygame, math, random, os
 from string import ascii_lowercase as acl
 from archive.game import Die
 # Initialize Pygame
 pygame.init()
 
-# Constants
 
+
+# Constants
+fullscreen = True
 FPS = 60
 WHITE = (255, 255, 255)
-
-screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+if fullscreen: 
+    screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
+else:
+    screen = pygame.display.set_mode((1000,600))
 WIDTH, HEIGHT = pygame.display.get_window_size()
 pygame.display.set_caption("Great Filter")
 
 RED = ('#FF0000')
 PURPLE = ('#800080')
-ORANGE = ('#FFA500')
+ORANGE = ("#A56B00")
+YELLOW = ("#FFEE00")
 BLACK = ('#000000')
 GREEN = pygame.Color("#A1FB03")
 BLUE = pygame.Color("#01E3FD")
@@ -78,8 +88,7 @@ class City:
     def place(self, pos):
         x, y = pos
         w, h = self.dimensions
-        pygame.draw.rect(screen,self.color,
-                         pygame.rect.Rect(x - w/2, y - h/2, w, h))
+        pygame.draw.circle(screen, self.color, radius=HEX_SIZE/5.1, center=pos)
         self.placed = True
 
 
@@ -89,6 +98,7 @@ class Plot:
         self.rotation = rotation
 
         #index is used to determine where the plot is in physical space, regardless of rotation
+        #index 0 is always the bottom left plot on a given hex
         self.index = index
 
         #letter value and buildable status need to take into consideration the rotation of the tile
@@ -96,7 +106,6 @@ class Plot:
         self.buildable = composition[(index + rotation) % 6] == 'l'
 
         self.occupied = False
-        self.token = None
         self.connections = []
         self.center = None
 
@@ -116,15 +125,17 @@ class HexTile:
         #used to set the color of the plot fill when drawing shapes
         self.colors = {'l':GREEN, 'w':BLUE}
         self.composition = composition_list[composition]
+        self.city = None
+        #sets random rotation of tile, in 60 degree increments
         self.rotation = random.randint(0, 5)
         self.value = value
+        self.occupied = False
         self.adjacencies = None
         #create identity for each individual plot in the hex
         self.plots = [
             Plot(index, self.composition, self.value, self.rotation)
             for index in range(6)
         ]
-        self.place()
 
     def set_location(self, x, y):
         "Assigns position of tile on screen"
@@ -135,9 +146,10 @@ class HexTile:
         "Assigns position of tile in the grid"
         self.coordinate = (col, row)
 
-    def place(self):
+    def place(self, x, y): 
         "Draws hexagon on the screen"
-        self.tile = pygame.draw.polygon(screen, BLACK, [(self.x + HEX_SIZE * math.cos(math.radians(angle)), self.y + HEX_SIZE * math.sin(math.radians(angle))) for angle in range(0, 360, 60)], 10)
+        self.tile = pygame.draw.polygon(screen, BLUE, [(self.x + HEX_SIZE * math.cos(math.radians(angle)), self.y + HEX_SIZE * math.sin(math.radians(angle))) for angle in range(0, 360, 60)], 10)
+        
         for angle in range(0, 360, 60):
             index = (angle//60 + self.rotation) % 6
             #draw hex triangle fill, references composition string to get plot color
@@ -157,9 +169,18 @@ class HexTile:
         
         for angle, plot in zip(range(0, 360, 60), self.plots):
             tile_letter = hex_font.render(plot.letter, True, BLACK)
-            screen.blit(tile_letter, ((self.x + (HEX_SIZE-HEX_SIZE/3) * math.cos(math.radians(angle+30))-tile_letter.get_width()/2, self.y + (HEX_SIZE-HEX_SIZE/3) * math.sin(math.radians(angle+30))-tile_letter.get_height()/2)))
+            screen.blit(tile_letter, ((self.x + (HEX_SIZE-HEX_SIZE/3) * math.cos(math.radians(angle+30))-tile_letter.width/2, self.y + (HEX_SIZE-HEX_SIZE/3) * math.sin(math.radians(angle+30))-tile_letter.height/2)))
+        pygame.draw.circle(screen, BLACK, (x, y), HEX_SIZE/5+HEX_SIZE/20)
+        pygame.draw.circle(screen, GREEN, (x, y), HEX_SIZE/5)
+        if self.city: 
+            self.city.place((x, y))
+        hex_num = hex_font.render(str(self.value), True, BLACK)
 
-    def adjacency_debug(self):
+        ## also shows rotation value of given hex for debug
+        # hex_num = hex_font.render(str(tile.value)+" "+str(tile.rotation), True, WHITE)
+
+        screen.blit(hex_num, (x - hex_num.width/2, y- hex_num.height/2))
+    def adjacency_debug(self): 
         "used to ensure individual plots know when an adjacent tile exists"
         for angle in range(0, 360, 60):
             index = angle//60
@@ -170,7 +191,9 @@ class HexTile:
 class HexGrid:
     def __init__(self):
         #grid and tile list filled in with tile objects during the draw method
+        #grid variable contains the tiles how they appear on the screen, so their relative locations can be easily determined
         self.grid = [[None for _ in range(5)] for _ in range(4)]
+        #tile_list contains the same tile objects, but in a single list in numerical order, so they can be iterated through more easily
         self.tile_list = [None for _ in range(20)]
         self.printed = False
         self.tile_highlight = None
@@ -190,14 +213,8 @@ class HexGrid:
                 y = row * hex_size * math.sqrt(3) + (hex_size * math.sqrt(3) / 2 * (col % 2)) + offset_y
                 tile.set_location(x, y)
                 tile.set_coordinates(col, row)
-                tile.place()
-                pygame.draw.circle(screen, BLACK, (x, y), 10)
-                hex_num = hex_font.render(str(tile.value), True, WHITE)
+                tile.place(x, y)
 
-                ## also shows rotation value of given hex for debug
-                # hex_num = hex_font.render(str(tile.value)+" "+str(tile.rotation), True, WHITE)
-
-                screen.blit(hex_num, (x - hex_num.get_width()/2, y- hex_num.get_height()/2))
                 self.grid[row][col] = tile
                 self.tile_list[tile.value-1] = tile
                 index += 1
@@ -290,8 +307,6 @@ class InfoBar:
             pygame.image.load('assets/dice/d6.png'), (WIDTH * width_scale, HEIGHT* height_scale)),
             8:pygame.transform.scale(
             pygame.image.load('assets/dice/d8.png'), (WIDTH * width_scale, HEIGHT* height_scale)),
-            10:pygame.transform.scale(
-            pygame.image.load('assets/dice/d10.png'), (WIDTH * width_scale, HEIGHT* height_scale)),
             12:pygame.transform.scale(
             pygame.image.load('assets/dice/d12.png'), (WIDTH * width_scale, HEIGHT* height_scale)),
             20:pygame.transform.scale(
@@ -300,28 +315,30 @@ class InfoBar:
 
 
 
-    def draw_sections(self):
-        "Ratios were trial and errored to get the info bar to appear nicely"
+    def draw_sections(self): 
+        "Ratios for item sizes were trial and errored to get the info bar to appear nicely"
         offset = (WIDTH/150, HEIGHT/300)
-        main_box = [(WIDTH/10, 5*HEIGHT/6), (8*WIDTH/10, 0.7*HEIGHT/6)]
+        main_box = [(WIDTH/20, HEIGHT/10), (4*WIDTH/20, 8*HEIGHT/10)]
 
-        round_num_box = [(WIDTH/10, 5*HEIGHT/6-HEIGHT/25), (WIDTH/10, 0.2*HEIGHT/6)]
+        round_num_box = [(WIDTH/2-WIDTH/20, 5.1*HEIGHT/6-HEIGHT/25), (WIDTH/10, 0.2*HEIGHT/6)]
 
         pygame.draw.rect(screen, WHITE, main_box)
         pygame.draw.rect(screen, BLACK, main_box, width=4)
 
-        for n in range(4):
-            pygame.draw.rect(screen, BLACK, [(main_box[0][0]+(n)*WIDTH/5, main_box[0][1]), (main_box[1][0]/4, main_box[1][1])], width=1)
+        for n in range(4): 
+            pygame.draw.rect(screen, BLACK, [(main_box[0][0], main_box[0][1]+n*HEIGHT/5), (main_box[1][0], main_box[1][1]/4)], width=1)
             player: Player = self.players[n]
-            screen.blit(player.name, (WIDTH/10+(n)*WIDTH/5 + offset[0], 5*HEIGHT/6 + offset[1]))
+            screen.blit(player.name, (WIDTH/20 + offset[0], HEIGHT/10 +n*HEIGHT/5 + offset[1]))
+            pygame.draw.circle(screen, color = player.color,radius = WIDTH/300, center=(WIDTH/20 + 5.5 * offset[0], HEIGHT/10 +n*HEIGHT/5 + 3*offset[1]))
             #place icons on infobar
             for index, icon in enumerate(self.resource_icons):
-                screen.blit(icon[1], (WIDTH/10+(n)*WIDTH/5 + 2 * offset[0] + index * 5 * offset[0], 5*HEIGHT/6 + 8 * offset[1]))
-                value_text, value_rect = generate_text(str(player.resources[icon[0]]), BLACK, WHITE, (WIDTH/10+(n)*WIDTH/5 + 2 * offset[0] + index * 5 * offset[0] + WIDTH/45, 5*HEIGHT/6 + 8 * offset[1] + HEIGHT/100))
+                screen.blit(icon[1], (WIDTH/20+ 2 * offset[0] + index * 7 * offset[0], HEIGHT/10 + (n)*HEIGHT/5  + 8*(index//4+1) * offset[1]))
+
+                value_text, value_rect = generate_text(": " +str( player.resources[icon[0]]), BLACK, WHITE, (WIDTH/20 + 1.3*offset[0] + index * 7 * offset[0] + WIDTH/45, HEIGHT/10+(n)*HEIGHT/5 + 8 * offset[1] + HEIGHT/100))
                 screen.blit(value_text, value_rect)
             die: Die
-            for index, die in enumerate(player.dice):
-                screen.blit(self.die_icons[die.value], (WIDTH/10+(n)*WIDTH/5 + 2 * offset[0] + index * 5 * offset[0], 5*HEIGHT/6 + 8 * offset[1] + HEIGHT / 20 ))
+            for index, die in enumerate(player.dice): 
+                screen.blit(self.die_icons[die.value], (WIDTH/20+ 2 * offset[0] + index * 5 * offset[0], HEIGHT/10 +(n)*HEIGHT/5  + HEIGHT/5- 10 * offset[1]))
 
         #next round button
         pygame.draw.rect(screen, GREEN, self.round_btn)
@@ -334,17 +351,22 @@ class InfoBar:
 
 
 #Technical Elements
-
-class GameEngine:
+class GameEngine: 
     "Central command of the game"
     def __init__(self, game, tiles, grid: HexGrid):
-        self.players = [Player(0, RED, self), Player(1, PURPLE, self), Player(2, ORANGE, self), Player(3, BLACK, self)]
+        self.players = [Player(1, RED, self), Player(2, PURPLE, self), Player(3, ORANGE, self), Player(4, YELLOW, self)]
         self.assign_players()
         start_pos_set = False
         self.game = game
         self.grid = grid
         self.info_bar = InfoBar(self.players)
         self.start_locations = []
+
+        #quit button
+        self.quit_button = pygame.Rect(9/10*WIDTH, HEIGHT/30, WIDTH/12, HEIGHT/20)
+        self.quit_text, self.quit_rect = generate_text("Quit Sim", BLACK, GREEN, self.quit_button.center)
+
+        
         self.draw_screen(tiles)
         self.set_start()
 
@@ -354,6 +376,9 @@ class GameEngine:
         self.grid.draw_hex_grid(4, 5, HEX_SIZE, tiles)
         self.place_tokens()
         self.info_bar.draw_sections()
+        pygame.draw.rect(screen, GREEN, self.quit_button)
+        pygame.draw.rect(screen, BLACK, self.quit_button, 5)
+        screen.blit(self.quit_text, self.quit_rect)
 
     def place_tokens(self):
         "Place tiles on plots which are labeled occupied"
@@ -362,7 +387,7 @@ class GameEngine:
             plot: Plot
             for plot in tile.plots:
                 if plot.occupied:
-                    plot.token.place(plot.center)
+                    plot.city.place(plot.center)
                     
 
     def assign_players(self):
@@ -370,21 +395,23 @@ class GameEngine:
         for n, player in enumerate(self.players):
             player.set_name(f"Player {n+1}")
 
-    def set_start(self):
-        "Assign starting location for each player"
-        for player in self.players:
+    def set_start(self): 
+        "Assign starting location for each player by rolling a d20, referenced in the choose_start Player method"
+        for player in self.players: 
             start_value = roll_dice(20)
             player.start_pos = start_value
             player.choose_start(self.grid)
 
     def play_round(self):
         "Dictates what occurs when round is played"
-        self.info_bar.round_num += 1
+
         for player in self.players:
             player.roll_action()
-            player.purchase_action()
-            player.card_action()
+            if player.position-1 == (self.info_bar.round_num-1)%4:
+                player.purchase_action()
+                player.card_action()
 
+        self.info_bar.round_num += 1
 
 class Player:
     def __init__(self, position, color, engine:GameEngine):
@@ -397,46 +424,53 @@ class Player:
         self.shop = Shop()        
         self.dice = [Die()]
 
-
+        #assign resource values at start
         self.resources = {
-            'water': 0,
-            'food': 0,
-            'wood': 0,
-            'brick': 0
+            'water': (5-position)//2,
+            'food': (5-position)//3,
+            'wood': (5-position)//4,
+            'brick': (5-position)//5
         }
 
     def set_name(self, name):
+        "Sets the name of the player as appears on the infobar"
         self.name = info_font.render(name, True, BLACK)
 
-    def choose_start(self, grid: HexGrid):
+    def choose_start(self, grid: HexGrid): 
+        "Player can choose any land plot on the hextile they are assigned"
         spawn_tile: HexTile = grid.tile_list[self.start_pos-1]
-        if self.start_pos not in self.engine.start_locations:
-            self.engine.start_locations.append(self.start_pos)
-            for plot in spawn_tile.plots:
-                if plot.buildable and not plot.occupied:
-                    plot.occupied = True
-                    placed, index = True, 0
-                    while placed:
-                        try:
-                            token = self.cities[index]
-                            placed = token.placed
-                            if not placed:
-                                plot.token = token
-                                return
-                            index += 1
-                        except IndexError:
-                            break
+        #two players can not start on the same hex, if they do then the second one to place their tile has to reroll
+        if not spawn_tile.occupied:
+            spawn_tile.occupied = True
+            placed, index = True, 0
+            #this iterates through the cities in the player inventory and places one that isnt placed yet. 
+            #somewhat unneccessary since it is the first placement, but I am I am afraid of removing it in case anything else important is tied to it. It can possibly be implemented as a separate method
+            index = 0
+            while placed:
+                try:
+                    city = self.cities[index]
+                    placed = city.placed
+                    if not placed: 
+                        spawn_tile.city = city
+                        return
+                    index += 1
+                except IndexError:
+                    return
         self.start_pos = roll_dice(20)
-        self.choose_start(grid, self.engine)
+        self.choose_start(grid)
     
     def roll_action(self):
         die: Die
         for die in self.dice:
             roll_value = die.roll()
+            #increase 
             self.resources[die.die_resources[roll_value]] += 1
     
     def purchase_action(self):
-        print(list(self.resources.values()))
+        #this is the spot I am at where I am stuck, want to automate buying roads, which connect between adjacent land plots,
+        #and new settlements on plots with roads connected to them
+        #to do it properly would require pathfinding algorithms, and creating a graph structure to connect all the plots together. 
+        print(f"Player {self.position} purchased ___")
 
     def card_action(self):
         ...
@@ -445,29 +479,40 @@ class Player:
 class Shop:
     def __init__(self):
         self.prices = {
-            'road': (0, 0, 1, 1),
-            'city': (1, 1, 1, 1)
+            'road': (0, 0, 1, 0, 0, 0, 0, 0),
+            'town': (0, 0, 1, 1, 0, 0, 0, 0),
+            'aquifer': (2, 0, 3, 4, 0, 0, 0, 0),
+            'farm': (1, 2, 4, 4, 0, 0, 0, 0),
+            'upgrade6': (0, 2, 2, 0, 0, 0, 0, 0),
+            'upgrade8': (2, 1, 1, 2, 0, 0, 0, 0),
+            'upgrade10': (2, 1, 3, 4, 0, 0, 0, 0), 
+            'upgrade12': (2, 2, 2, 2, 1, 1, 0, 0), 
+            'upgrade20': (4, 4, 4, 4, 2, 2, 1, 1), 
         }
 
 
 class Game:
     def __init__(self):
+        self.fullscreen = True
+        self.screen = screen
         self.main()
+
 
     # Game loop
     def main(self):
         tile_dragging = False
         #initial conditions
-
+        
+        #creates list of unplaced tiles
         tiles = shuffle([HexTile(n%8, n+1) for n in range(20)])
-        grid = HexGrid()
-        engine = GameEngine(self,tiles, grid)
-        choosing_tile = False
-        quit_button = pygame.Rect(9/10*WIDTH, HEIGHT/30, WIDTH/12, HEIGHT/20)
-        quit_text, quit_rect = generate_text("Quit Sim", BLACK, GREEN, quit_button.center)
 
+        #creates grid where tiles will be placed
+        grid = HexGrid()
+        #starts the game engine
+        engine = GameEngine(self, tiles, grid)
+        
         #test to ensure plot adjacency works correctly
-        def tile_debug(row, col):
+        def tile_adjacency_debug(row, col):
             my_tile: HexTile
             my_tile = grid.grid[row][col]
             for plot in my_tile.plots:
@@ -484,14 +529,27 @@ class Game:
                 if event.type == pygame.QUIT:
                     running = False
 
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_SPACE:
+                        if not self.fullscreen: 
+                            self.screen = pygame.display.set_mode(
+                                (0, 0), pygame.FULLSCREEN
+                            )
+                            self.fullscreen = True
+                        else:
+                            self.screen = pygame.display.set_mode(
+                                (1280, 720)
+                            )
+                            self.fullscreen = False
+
+
                 if event.type == pygame.MOUSEBUTTONUP:
                     if engine.info_bar.round_btn.collidepoint(event.pos):
                         engine.play_round()
-
-                    if quit_button.collidepoint(event.pos):
+                    
+                    if engine.quit_button.collidepoint(event.pos): 
                         running = False
-
-
+                
                 #Code for drag and dropping tiles, moot due to auto-assigment, may be revisited in the future. 
 
 
@@ -519,13 +577,9 @@ class Game:
 
             # Drawing
             engine.draw_screen(tiles)
-            pygame.draw.rect(screen, GREEN, quit_button)
-            pygame.draw.rect(screen, BLACK, quit_button, 5)
-            screen.blit(quit_text, quit_rect)
-
+            
             # Update display
             pygame.display.flip()
-
 
         # Quit Pygame
         pygame.quit()

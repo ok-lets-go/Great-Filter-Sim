@@ -1,9 +1,9 @@
 import random
 
 class Die:
-    def __init__(self):
-        self.value_options = (4, 6, 8, 10, 12, 20)
-        self.value_index = 0
+    def __init__(self, index = 0):
+        self.value_options = (4, 6, 8, 12, 20)
+        self.value_index = index
         self.value = self.value_options[self.value_index]
         self.die_resources = {
             1: 'water',
