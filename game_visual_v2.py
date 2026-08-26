@@ -89,10 +89,7 @@ class HexTile:
             p2 = self.vertices[i]
             p3 = self.vertices[(i + 1) % 6]
 
-            triangle = Triangle(
-                [center, p2, p3],
-                self.triangle_colors[i]
-            )
+            triangle = Triangle([center, p2, p3], self.triangle_colors[i])
 
             triangles.append(triangle)
 
@@ -109,18 +106,11 @@ class HexTile:
 
         # Center circle ALWAYS green
         pygame.draw.circle(
-            surface,
-            CENTER_GREEN,
-            (int(self.x), int(self.y)),
-            int(self.size * 0.22)
+            surface, CENTER_GREEN, (int(self.x), int(self.y)), int(self.size * 0.22)
         )
 
         pygame.draw.circle(
-            surface,
-            BLACK,
-            (int(self.x), int(self.y)),
-            int(self.size * 0.22),
-            2
+            surface, BLACK, (int(self.x), int(self.y)), int(self.size * 0.22), 2
         )
 
 
@@ -173,13 +163,7 @@ def main():
     running = True
 
     # 4 rows vertical, 5 columns horizontal
-    grid = HexGrid(
-        rows=4,
-        cols=5,
-        hex_size=50,
-        start_x=120,
-        start_y=120
-    )
+    grid = HexGrid(rows=4, cols=5, hex_size=50, start_x=120, start_y=120)
 
     while running:
 

@@ -9,6 +9,9 @@ readme = "README.md"
 python = "^3.10"
 pygame = "^2.6.1"
 
+[tool.poetry.group.dev.dependencies]
+black = "^26.5.1"
+
 
 [build-system]
 requires = ["poetry-core"]
